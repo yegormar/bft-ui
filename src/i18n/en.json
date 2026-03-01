@@ -1,0 +1,13 @@
+{
+  "common": {
+    "home": "Home",
+    "about": "About"
+  },
+  "home": {
+    "welcome": "Welcome to the home page."
+  },
+  "about": {
+    "title": "About",
+    "content": "This is the about page."
+  }
+}

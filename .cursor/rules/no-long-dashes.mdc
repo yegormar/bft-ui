@@ -1,0 +1,17 @@
+---
+description: Never use long dashes (em dash); use hyphens or rephrase
+alwaysApply: true
+---
+
+# No long dashes
+
+- **Never use the em dash (—)** in UI copy, docs, JSON content, or code comments.
+- Use a **hyphen (-)** or **en dash (–)** only when needed for ranges (e.g. "2020–2021").
+- For pauses or asides in prose, rephrase with commas, parentheses, or separate sentences.
+
+### Examples
+
+- **Bad:** "No registration required—no sign-up."
+- **Good:** "No registration required; no sign-up." or "No registration required. No sign-up."
+- **Bad:** "We want to make the interview engaging—pick what fits you."
+- **Good:** "We want to make the interview engaging. Pick what fits you."

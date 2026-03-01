@@ -1,0 +1,15 @@
+---
+description: Run a visual quality check before considering work complete
+alwaysApply: true
+---
+
+# Visual quality check
+
+Before treating UI work as complete, verify the end product looks good visually:
+
+- **Layout**: Spacing, alignment, and hierarchy are consistent; nothing feels cramped or floating.
+- **Responsiveness**: Content works on small viewports (e.g. phone) and doesn’t overflow or break.
+- **Consistency**: Uses the project’s design tokens (e.g. Chakra semantic colors), typography, and component patterns.
+- **Polish**: Buttons and touch targets are appropriately sized; borders and shadows are intentional, not noisy.
+
+If something looks off, adjust spacing, alignment, or styling rather than leaving it as-is.

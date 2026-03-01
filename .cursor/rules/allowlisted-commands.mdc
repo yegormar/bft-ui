@@ -1,0 +1,15 @@
+---
+description: Run allowlisted commands (test, build, lint) directly without asking
+alwaysApply: true
+---
+
+# Allowlisted commands
+
+When the task requires running any of these commands, run them directly and report the result. Do not ask the user to confirm or to run the command themselves.
+
+- `npm run test` / `npm run test:unit`
+- `npm run test:regression`
+- `npm run test:integration`
+- `npm run test:e2e`
+- `npm run build`
+- `npm run lint`

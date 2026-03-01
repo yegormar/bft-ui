@@ -1,0 +1,12 @@
+---
+description: Testing as part of development; test-first and stable selectors
+alwaysApply: true
+---
+
+# Testing as part of development
+
+- **Bugfixes**: Reproduce with a failing test first, then fix, then run the relevant suite. Do not change production code to "fix" a bug until a test reproduces it.
+- **After every change**: Run the relevant test suite (unit, regression, integration, or e2e) before considering work done. Add or extend tests so the new behavior or fix is covered.
+- **Where to add tests**: Unit next to code (`src/**/__tests__/`); regression in `tests/regression/`; integration in `tests/integration/`; e2e in `tests/e2e/` using helpers in `tests/e2e/helpers/`.
+- **Stable selectors**: Use `data-testid` (or similar) for elements that tests interact with or assert on. Avoid selecting by visible text or CSS class.
+- **Checklist before done**: Relevant unit/regression/integration tests run and pass; new behavior or bug has a test; for UI changes, update e2e helpers and at least one e2e spec if the flow is user-critical.

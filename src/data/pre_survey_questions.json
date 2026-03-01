@@ -1,0 +1,77 @@
+{
+  "pre_survey": {
+    "intro_text": "We want to make the interview engaging for you. Please answer a few short questions so we can choose the best style and topics for your questions and activities. There are no right or wrong answers; just pick what fits you best.",
+    "questions": [
+      {
+        "id": 1,
+        "title": "Gender / Pronouns",
+        "description": "Optional, used to personalize labels and UI.",
+        "type": "single_choice",
+        "options": [
+          {"text": "Male"},
+          {"text": "Female"},
+          {"text": "Non-binary"},
+          {"text": "Prefer not to say"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Which best describes you right now?",
+        "description": "Optional. Helps us tailor examples and language.",
+        "type": "single_choice",
+        "options": [
+          {"text": "Pre high school"},
+          {"text": "In high school"},
+          {"text": "In college or university"},
+          {"text": "After college/university"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Your Interests",
+        "description": "Pick the types of activities you enjoy most in your free time, school, or hobbies. You can choose more than one.",
+        "type": "multi_choice",
+        "options": [
+          {"text": "Games or competitive activities (sports, tournaments, video games)", "scenario_clusters": {"gaming": 1}},
+          {"text": "Building, coding, experimenting, or technical projects", "scenario_clusters": {"technical": 1}},
+          {"text": "Arts, storytelling, design, or other creative projects", "scenario_clusters": {"creative": 1}},
+          {"text": "Working with or helping others in a team", "scenario_clusters": {"social": 1}},
+          {"text": "Puzzles, strategy, research, or logical thinking", "scenario_clusters": {"strategic": 1}},
+          {"text": "None of these / Neutral", "scenario_clusters": {"neutral": 1}}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "How Do You Like to Experience Activities?",
+        "description": "Pick up to two ways you like to approach tasks or challenges. This helps make the interview interesting and fun for you.",
+        "type": "multi_choice",
+        "maxSelections": 2,
+        "options": [
+          {"text": "I enjoy challenges and competition", "scenario_clusters": {"gaming": 1}},
+          {"text": "I like working with others to solve problems", "scenario_clusters": {"social": 1}},
+          {"text": "I enjoy experimenting and exploring ideas freely", "scenario_clusters": {"creative": 1}},
+          {"text": "I like practical, step-by-step problem solving", "scenario_clusters": {"technical": 1}},
+          {"text": "I like learning through stories, adventures, or creative scenarios", "scenario_clusters": {"creative": 1}},
+          {"text": "I prefer clear instructions with no games or stories", "scenario_clusters": {"neutral": 1}}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Risk and Challenge Preference",
+        "description": "This helps us adjust the difficulty and style of questions for you.",
+        "type": "single_choice",
+        "options": [
+          {"text": "I enjoy taking new risks and challenges", "scenario_clusters": {"adventurous": 1}},
+          {"text": "I prefer predictable and structured tasks", "scenario_clusters": {"structured": 1}},
+          {"text": "I like a balance between risk and structure", "scenario_clusters": {"neutral": 1}}
+        ]
+      }
+    ],
+    "profile_logic": {
+      "cluster_weighting": "Sum weights from all selections per cluster. Dominant cluster(s) determine the main style and type of questions in the interview.",
+      "secondary_tone_adjustment": "Risk/Novelty appetite adjusts challenge level and phrasing without changing cluster.",
+      "ui_personalization": "Gender/pronouns and age group adjust labels and UI text; passed in profile for personalization.",
+      "blending_rule": "If multiple clusters have similar weights, blend scenario metaphors proportionally in the main interview (e.g., 70% dominant, 30% secondary)."
+    }
+  }
+}

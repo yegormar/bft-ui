@@ -1,0 +1,14 @@
+---
+description: Chakra UI theming, brand colors, and dark mode; single source of truth, semantic tokens only
+alwaysApply: true
+---
+
+# Chakra theming and dark mode
+
+- **Brand palette**: Defined once in `src/theme.js`. Set `brandColors = foundations.colors.<name>` (e.g. `teal`, `cyan`, `blue`, `purple`, `pink`, `green`, `orange`, `yellow`, `red`, `gray`). Do not duplicate brand hex values elsewhere.
+- **Semantic tokens**: All UI colors that must support light/dark mode use semantic tokens, not raw palette names.
+  - **Chakra built-in**: `chakra-body-bg`, `chakra-body-text`, `chakra-subtle-bg`, `chakra-subtle-text`, `chakra-border-color`. Use these for page/section backgrounds, main text, secondary text, borders.
+  - **Custom (in theme)**: `hero-bg`, `hero-border`, `hero-title`, `hero-tagline`, `accent`, `nav-active`. Use for hero section and brand-accented elements.
+- **In components**: Do not use hardcoded `gray.*`, `white`, or raw `brand.*` for backgrounds, text, or borders that should flip in dark mode. Use the semantic token names above. Buttons use `colorScheme="brand"` (no custom variant).
+- **Layout root**: The root layout `Box` uses `bg="chakra-body-bg"` and `color="chakra-body-text"` so the whole app respects the theme.
+- **Dark mode**: Toggle is in the header; theme and semantic tokens handle the rest. Do not add component-level `colorMode` checks for styling; add new semantic tokens in `theme.js` if you need new mode-aware colors.
