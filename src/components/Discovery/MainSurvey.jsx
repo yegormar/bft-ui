@@ -1,6 +1,6 @@
-import { Box, Button, Container, Spinner, Text, VStack } from '@chakra-ui/react';
+import { Box, Button, Container, Progress, Spinner, Text, VStack } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { createSession, getNextQuestion, submitAnswers } from '../../services/surveyApi';
 import PreSurveyQuestion from './PreSurveyQuestion';
 
@@ -12,10 +12,14 @@ function selectionToValue(question, value) {
   });
 }
 
+const RESULTS_SESSION_KEY = 'bft_results_session_id';
+
 export default function MainSurvey({ clusterProfile }) {
+  const navigate = useNavigate();
   const [sessionId, setSessionId] = useState(null);
   const [question, setQuestion] = useState(null);
   const [value, setValue] = useState('');
+  const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -24,6 +28,7 @@ export default function MainSurvey({ clusterProfile }) {
 
   const fetchNext = useCallback(async (sid) => {
     const result = await getNextQuestion(sid);
+    if (result.progress) setProgress(result.progress);
     if (result.completed) {
       setCompleted(true);
       setQuestion(null);
@@ -39,6 +44,7 @@ export default function MainSurvey({ clusterProfile }) {
       setLoading(true);
       setError(null);
       try {
+        sessionStorage.removeItem(RESULTS_SESSION_KEY);
         const session = await createSession(clusterProfile ?? null);
         if (cancelled) return;
         setSessionId(session.id);
@@ -112,15 +118,44 @@ export default function MainSurvey({ clusterProfile }) {
     return (
       <Box py={{ base: 6, md: 10 }} px={4} data-testid="page-discovery">
         <Container maxW="2xl" centerContent>
-          <VStack spacing={6} w="full">
-            <Text fontSize="lg" color="chakra-body-text">
-              You have completed this part of the discovery. Your answers will help shape your
-              strength profile and recommendations.
-            </Text>
-            <Button as={RouterLink} to="/results" colorScheme="brand" size="lg" minH="44px">
-              View results
-            </Button>
-          </VStack>
+          <Box
+            p={{ base: 5, md: 8 }}
+            w="full"
+            maxW="xl"
+            mx="auto"
+            borderRadius="lg"
+            borderWidth="1px"
+            borderColor="chakra-border-color"
+            borderLeftWidth="4px"
+            borderLeftColor="accent"
+            bg="chakra-body-bg"
+            boxShadow="sm"
+          >
+            <VStack spacing={6} align="stretch" w="full">
+              {progress?.questionsAsked != null && (
+                <Text fontSize="sm" color="chakra-subtle-text">
+                  You answered {progress.questionsAsked} questions. Profile complete.
+                </Text>
+              )}
+              <Text fontSize="lg" color="chakra-body-text" lineHeight="tall">
+                You have completed this part of the discovery. Your answers will help shape your
+                strength profile and careers.
+              </Text>
+              <Button
+                colorScheme="brand"
+                size="lg"
+                minH="44px"
+                onClick={() => {
+                  if (sessionId) {
+                    sessionStorage.setItem(RESULTS_SESSION_KEY, sessionId);
+                    navigate('/results', { state: { sessionId } });
+                  }
+                }}
+              >
+                View results
+              </Button>
+            </VStack>
+          </Box>
         </Container>
       </Box>
     );
@@ -170,32 +205,59 @@ export default function MainSurvey({ clusterProfile }) {
     <Box py={{ base: 6, md: 10 }} px={4} data-testid="page-discovery">
       <Container maxW="2xl" centerContent>
         <VStack align="stretch" spacing={6} w="full">
+          {progress && (
+            <Box w="full">
+              <Progress
+                value={progress.percentComplete}
+                size="sm"
+                colorScheme="brand"
+                borderRadius="full"
+                hasStripe
+                data-testid="interview-progress"
+              />
+              <Text fontSize="sm" color="chakra-subtle-text" mt={2}>
+                {progress.questionsAsked > 0 && `Question ${progress.questionsAsked} · `}
+                Building your profile: {progress.coveredDimensions}/{progress.totalDimensions} dimensions covered ({progress.percentComplete}%)
+              </Text>
+            </Box>
+          )}
           {error && (
             <Text fontSize="sm" color="red.500">
               {error}
             </Text>
           )}
-          <PreSurveyQuestion
-            question={question}
-            value={value}
-            onChange={setValue}
-            optional={false}
-            maxSelections={maxSelections}
-          />
-          <Box w="full" display="flex" justifyContent="flex-end">
-            <Button
-              colorScheme="brand"
-              size="lg"
-              onClick={handleNext}
-              isDisabled={!canProceed() || submitting}
-              minH="44px"
-              px={6}
-              isLoading={submitting}
-              loadingText="Submitting..."
-              data-testid="main-survey-next"
-            >
-              Next
-            </Button>
+          <Box
+            p={{ base: 4, md: 6 }}
+            borderRadius="lg"
+            borderWidth="1px"
+            borderColor="chakra-border-color"
+            borderLeftWidth="4px"
+            borderLeftColor="accent"
+            bg="chakra-body-bg"
+            boxShadow="sm"
+          >
+            <PreSurveyQuestion
+              question={question}
+              value={value}
+              onChange={setValue}
+              optional={false}
+              maxSelections={maxSelections}
+            />
+            <Box w="full" display="flex" justifyContent="flex-end" mt={4}>
+              <Button
+                colorScheme="brand"
+                size="lg"
+                onClick={handleNext}
+                isDisabled={!canProceed() || submitting}
+                minH="44px"
+                px={6}
+                isLoading={submitting}
+                loadingText="Submitting..."
+                data-testid="main-survey-next"
+              >
+                Next
+              </Button>
+            </Box>
           </Box>
         </VStack>
       </Container>

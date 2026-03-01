@@ -2,6 +2,7 @@
  * Survey/session API client. In dev with proxy, use empty apiBaseUrl (relative /api). Otherwise set VITE_API_BASE_URL.
  */
 
+import { ulid } from 'ulid';
 import { appConfig } from '../config/env';
 
 const baseUrl = appConfig.apiBaseUrl ?? '';
@@ -27,7 +28,9 @@ async function request(method, path, body) {
 }
 
 export async function createSession(preSurveyProfile = null) {
-  const body = preSurveyProfile != null ? { preSurveyProfile } : null;
+  const id = ulid();
+  const body = { id };
+  if (preSurveyProfile != null) body.preSurveyProfile = preSurveyProfile;
   return request('POST', '/sessions', body);
 }
 
@@ -37,4 +40,12 @@ export async function submitAnswers(sessionId, answers) {
 
 export async function getNextQuestion(sessionId) {
   return request('GET', `/sessions/${sessionId}/assessment/next`);
+}
+
+export async function getAssessment(sessionId) {
+  return request('GET', `/sessions/${sessionId}/assessment`);
+}
+
+export async function getReport(sessionId) {
+  return request('GET', `/sessions/${sessionId}/report`);
 }

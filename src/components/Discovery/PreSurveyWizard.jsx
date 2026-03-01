@@ -91,6 +91,8 @@ export default function PreSurveyWizard({ onComplete }) {
               borderRadius="lg"
               borderWidth="1px"
               borderColor="chakra-border-color"
+              borderLeftWidth="4px"
+              borderLeftColor="accent"
               bg="chakra-body-bg"
               boxShadow="sm"
             >
@@ -135,6 +137,16 @@ export default function PreSurveyWizard({ onComplete }) {
               </Box>
 
               {question && (
+                <Box
+                  p={{ base: 4, md: 6 }}
+                  borderRadius="lg"
+                  borderWidth="1px"
+                  borderColor="chakra-border-color"
+                  borderLeftWidth="4px"
+                  borderLeftColor="accent"
+                  bg="chakra-body-bg"
+                  boxShadow="sm"
+                >
                 <PreSurveyQuestion
                   question={question}
                   value={value}
@@ -143,6 +155,7 @@ export default function PreSurveyWizard({ onComplete }) {
                   onSkip={isOptional ? handleSkip : undefined}
                   maxSelections={maxSelections}
                 />
+                </Box>
               )}
 
               <HStack w="full" justify="space-between" pt={4} spacing={3}>

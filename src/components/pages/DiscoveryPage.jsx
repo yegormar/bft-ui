@@ -1,4 +1,6 @@
+import { Box } from '@chakra-ui/react';
 import { useState } from 'react';
+import PageHero from '../Layout/PageHero';
 import MainSurvey from '../Discovery/MainSurvey';
 import PreSurveyWizard from '../Discovery/PreSurveyWizard';
 
@@ -11,11 +13,21 @@ function DiscoveryPage() {
     setPhase('main_survey');
   };
 
-  if (phase === 'main_survey') {
-    return <MainSurvey clusterProfile={clusterProfile} />;
-  }
+  const heroTagline = phase === 'main_survey' ? 'Your tailored interview' : 'A few questions to tailor your experience';
+  const content = phase === 'main_survey' ? (
+    <MainSurvey clusterProfile={clusterProfile} />
+  ) : (
+    <PreSurveyWizard onComplete={handlePreSurveyComplete} />
+  );
 
-  return <PreSurveyWizard onComplete={handlePreSurveyComplete} />;
+  return (
+    <>
+      <PageHero title="Discovery" tagline={heroTagline} />
+      <Box bg="chakra-body-bg" minH="50vh">
+        {content}
+      </Box>
+    </>
+  );
 }
 
 export default DiscoveryPage;
