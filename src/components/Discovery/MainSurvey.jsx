@@ -5,6 +5,9 @@ import { createSession, getNextQuestion, submitAnswers } from '../../services/su
 import PreSurveyQuestion from './PreSurveyQuestion';
 
 function selectionToValue(question, value) {
+  if (question.type === 'rank') {
+    return Array.isArray(value) ? value : [];
+  }
   const texts = Array.isArray(value) ? value : value ? [value] : [];
   return texts.map((text) => {
     const opt = question.options?.find((o) => o.text === text);
@@ -33,8 +36,15 @@ export default function MainSurvey({ clusterProfile }) {
       setCompleted(true);
       setQuestion(null);
     } else {
-      setQuestion(result.nextQuestion);
-      setValue(result.nextQuestion.type === 'multi_choice' ? [] : '');
+      const q = result.nextQuestion;
+      setQuestion(q);
+      if (q.type === 'rank' && Array.isArray(q.options)) {
+        setValue(q.options.map((o) => o.value));
+      } else if (q.type === 'multi_choice') {
+        setValue([]);
+      } else {
+        setValue('');
+      }
     }
   }, []);
 
@@ -62,7 +72,8 @@ export default function MainSurvey({ clusterProfile }) {
   const handleNext = async () => {
     if (!sessionId || !question) return;
     const payloadValue = selectionToValue(question, value);
-    const singleVal = question.type === 'single_choice' ? payloadValue[0] : payloadValue;
+    const singleVal =
+      question.type === 'single_choice' ? payloadValue[0] : question.type === 'rank' ? payloadValue : payloadValue;
     setSubmitting(true);
     setError(null);
     try {
@@ -80,6 +91,7 @@ export default function MainSurvey({ clusterProfile }) {
   const canProceed = () => {
     if (question?.type === 'single_choice') return value != null && value !== '';
     if (question?.type === 'multi_choice') return Array.isArray(value) && value.length > 0;
+    if (question?.type === 'rank') return Array.isArray(value) && value.length === (question.options?.length ?? 0);
     return false;
   };
 

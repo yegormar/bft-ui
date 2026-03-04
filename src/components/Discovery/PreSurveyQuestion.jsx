@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
+  IconButton,
   HStack,
   Radio,
   RadioGroup,
@@ -9,6 +10,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 
 // Option texts that mean "none of the above" / neutral only; selecting one clears all others, and vice versa.
 const EXCLUSIVE_OPTION_TEXTS = new Set([
@@ -21,9 +23,9 @@ function isExclusiveOption(optionText) {
 }
 
 /**
- * Renders a single pre-survey question: single or multi choice, optional Skip, optional maxSelections.
- * "None" / neutral options are exclusive: selecting one clears others; selecting any other clears "None".
- * @param {{ question: { id: number, title: string, description?: string, type: string, options: Array<{ text: string }> }, value: string | string[], onChange: (value: string | string[]) => void, optional?: boolean, onSkip?: () => void, maxSelections?: number }}
+ * Renders a single pre-survey question: single choice, multi choice, or rank (order options).
+ * "None" / neutral options are exclusive in multi choice.
+ * @param {{ question: { id: number, title: string, description?: string, type: string, options: Array<{ text: string, value: string }> }, value: string | string[], onChange: (value: string | string[]) => void, optional?: boolean, onSkip?: () => void, maxSelections?: number }}
  */
 function PreSurveyQuestion({
   question,
@@ -34,8 +36,23 @@ function PreSurveyQuestion({
   maxSelections,
 }) {
   const isSingle = question.type === 'single_choice';
+  const isRank = question.type === 'rank';
   const selectedList = Array.isArray(value) ? value : value ? [value] : [];
   const atMax = maxSelections != null && selectedList.length >= maxSelections;
+
+  // Rank: value is ordered array of option values. Reorder by moving up/down.
+  const orderedValues = isRank
+    ? (selectedList.length === question.options?.length
+        ? selectedList
+        : question.options?.map((o) => o.value) ?? [])
+    : [];
+  const moveRank = (index, direction) => {
+    const next = [...orderedValues];
+    const j = index + direction;
+    if (j < 0 || j >= next.length) return;
+    [next[index], next[j]] = [next[j], next[index]];
+    onChange(next);
+  };
 
   const handleSingleChange = (next) => {
     onChange(next);
@@ -75,7 +92,52 @@ function PreSurveyQuestion({
           )}
         </Box>
 
-        {isSingle ? (
+        {isRank ? (
+          <VStack align="stretch" spacing={2} role="group" aria-label={`${question.title} — order from most to least`}>
+            {orderedValues.map((optValue, index) => {
+              const opt = question.options?.find((o) => o.value === optValue);
+              if (!opt) return null;
+              return (
+                <HStack
+                  key={opt.value}
+                  px={4}
+                  py={3}
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor="chakra-border-color"
+                  bg="chakra-body-bg"
+                  justify="space-between"
+                  _hover={{ borderColor: 'accent', bg: 'chakra-subtle-bg' }}
+                >
+                  <Text color="chakra-body-text" flex={1}>
+                    {index + 1}. {opt.text}
+                  </Text>
+                  <HStack spacing={0}>
+                    <IconButton
+                      aria-label="Move up"
+                      icon={<ChevronUpIcon />}
+                      size="sm"
+                      variant="ghost"
+                      isDisabled={index === 0}
+                      onClick={() => moveRank(index, -1)}
+                    />
+                    <IconButton
+                      aria-label="Move down"
+                      icon={<ChevronDownIcon />}
+                      size="sm"
+                      variant="ghost"
+                      isDisabled={index === orderedValues.length - 1}
+                      onClick={() => moveRank(index, 1)}
+                    />
+                  </HStack>
+                </HStack>
+              );
+            })}
+            <Text fontSize="xs" color="chakra-subtle-text">
+              Order from most like you (top) to least (bottom).
+            </Text>
+          </VStack>
+        ) : isSingle ? (
           <RadioGroup
             value={typeof value === 'string' ? value : selectedList[0]}
             onChange={handleSingleChange}
@@ -107,7 +169,7 @@ function PreSurveyQuestion({
           </RadioGroup>
         ) : (
           <Stack spacing={2} role="group" aria-label={question.title}>
-            {question.options.map((opt) => (
+            {question.options?.map((opt) => (
               <Box
                 key={opt.text}
                 as="label"

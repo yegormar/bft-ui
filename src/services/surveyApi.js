@@ -10,7 +10,7 @@ const BASE = (baseUrl || '').replace(/\/$/, '') + '/api';
 
 async function request(method, path, body) {
   const url = `${BASE}${path}`;
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include' };
   if (body != null) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   if (!res.ok) {

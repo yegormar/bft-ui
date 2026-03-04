@@ -233,9 +233,20 @@ export default function ResultsPage() {
                             </Text>
                           )}
                           {item.value != null && item.value !== '' && (
-                            <Text fontSize="sm" color="chakra-subtle-text" mb={1}>
-                              You chose: {String(item.value)}
-                            </Text>
+                            <Box fontSize="sm" color="chakra-subtle-text" mb={1}>
+                              {Array.isArray(item.value) ? (
+                                <>
+                                  <Text fontWeight="medium" mb={1}>You ranked (most to least):</Text>
+                                  <VStack align="stretch" spacing={0} pl={2}>
+                                    {item.value.map((v, idx) => (
+                                      <Text key={idx}>{idx + 1}. {String(v)}</Text>
+                                    ))}
+                                  </VStack>
+                                </>
+                              ) : (
+                                <Text>You chose: {String(item.value)}</Text>
+                              )}
+                            </Box>
                           )}
                           {item.summary && (
                             <Text fontSize="sm" lineHeight="tall">{stripMarkdown(item.summary)}</Text>
