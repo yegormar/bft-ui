@@ -1,8 +1,8 @@
-import { Box, Button, Container, HStack, Progress, Text, VStack } from '@chakra-ui/react';
+  import { Box, Button, Container, HStack, Progress, Text, VStack } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import preSurveyData from '../../data/pre_survey_questions.json';
 import { computeClusterProfile } from '../../utils/clusterProfile';
-import { loadPreSurveyProgress, savePreSurveyProgress } from '../../utils/preSurveyStorage';
+import { loadPreSurveyProgress, savePreSurveyProgress, hasCompletedPreSurvey } from '../../utils/preSurveyStorage';
 import PreSurveyQuestion from './PreSurveyQuestion';
 
 const PRE_SURVEY = preSurveyData.pre_survey;
@@ -15,10 +15,24 @@ function getInitialAnswers() {
   return saved ? saved.answers : {};
 }
 
+function checkAlreadyCompleted(savedAnswers) {
+  const saved = loadPreSurveyProgress(QUESTIONS.length);
+  if (!saved || saved.step !== QUESTIONS.length) return false;
+  const answers = savedAnswers || saved.answers;
+  // Check if ALL non-optional questions have answers
+  for (const q of QUESTIONS) {
+    if (OPTIONAL_QUESTION_IDS.has(q.id)) continue; // Skip optional questions
+    if (answers[q.id] === undefined || (q.type === 'single_choice' && answers[q.id] === '') || (q.type === 'multi_choice' && Array.isArray(answers[q.id]) && answers[q.id].length === 0)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export default function PreSurveyWizard({ onComplete }) {
-  const initialAnswers = useRef(getInitialAnswers());
-  const [step, setStep] = useState(0); // always start at intro; previous answers are restored so user can click Next through
-  const [answers, setAnswers] = useState(initialAnswers.current);
+  const [step, setStep] = useState(0); // always start at intro
+  const [answers, setAnswers] = useState(getInitialAnswers());
+  const [hasCompleted, setHasCompleted] = useState(checkAlreadyCompleted());
 
   useEffect(() => {
     savePreSurveyProgress(answers, step, QUESTIONS.length);
@@ -61,6 +75,11 @@ export default function PreSurveyWizard({ onComplete }) {
     }
   };
 
+  const handleSkipPreTest = () => {
+    const profile = computeClusterProfile(QUESTIONS, answers);
+    onComplete(profile);
+  };
+
   const canProceed = () => {
     if (isIntro) return true;
     if (isOptional) return true;
@@ -97,27 +116,47 @@ export default function PreSurveyWizard({ onComplete }) {
               boxShadow="sm"
             >
               <VStack align="stretch" spacing={8} textAlign="left">
-                <Text
-                  fontSize="md"
-                  color="chakra-body-text"
-                  lineHeight="tall"
-                  whiteSpace="pre-line"
-                  maxW="65ch"
-                >
-                  {INTRO_TEXT}
-                </Text>
-                <Button
-                  colorScheme="brand"
-                  size="lg"
-                  onClick={handleNext}
-                  minH="44px"
-                  w={{ base: 'full', sm: 'auto' }}
-                  px={8}
-                  alignSelf={{ base: 'stretch', sm: 'flex-start' }}
-                  data-testid="pre-survey-start"
-                >
-                  Got it
-                </Button>
+                {hasCompleted ? (
+                  <Button
+                    colorScheme="brand"
+                    size="lg"
+                    onClick={() => {
+                      const profile = computeClusterProfile(QUESTIONS, answers);
+                      onComplete(profile);
+                    }}
+                    minH="44px"
+                    w={{ base: 'full', sm: 'auto' }}
+                    px={8}
+                    alignSelf={{ base: 'stretch', sm: 'flex-start' }}
+                    data-testid="pre-survey-skip"
+                  >
+                    Skip Pre-test
+                  </Button>
+                ) : (
+                  <>
+                    <Text
+                      fontSize="md"
+                      color="chakra-body-text"
+                      lineHeight="tall"
+                      whiteSpace="pre-line"
+                      maxW="65ch"
+                    >
+                      {INTRO_TEXT}
+                    </Text>
+                    <Button
+                      colorScheme="brand"
+                      size="lg"
+                      onClick={handleNext}
+                      minH="44px"
+                      w={{ base: 'full', sm: 'auto' }}
+                      px={8}
+                      alignSelf={{ base: 'stretch', sm: 'flex-start' }}
+                      data-testid="pre-survey-start"
+                    >
+                      Got it
+                    </Button>
+                  </>
+                )}
               </VStack>
             </Box>
           ) : (
@@ -168,6 +207,28 @@ export default function PreSurveyWizard({ onComplete }) {
                 >
                   Back
                 </Button>
+                {/* Check if all questions have answers (show skip button only if all answered) */}
+                {(() => {
+                  const allAnswered = QUESTIONS.every(q => {
+                    const answer = answers[q.id];
+                    if (answer === undefined) return false;
+                    if (q.type === 'single_choice' && (answer === null || answer === '')) return false;
+                    if (q.type === 'multi_choice' && (!Array.isArray(answer) || answer.length === 0)) return false;
+                    return true;
+                  });
+                  
+                  return allAnswered ? (
+                    <Button
+                      colorScheme="gray"
+                      size="lg"
+                      onClick={handleSkipPreTest}
+                      minH="44px"
+                      px={6}
+                    >
+                      Skip Pre-test
+                    </Button>
+                  ) : null;
+                })()}
                 <Button
                   colorScheme="brand"
                   size="lg"
