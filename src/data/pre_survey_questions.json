@@ -1,69 +1,99 @@
 {
   "pre_survey": {
-    "intro_text": "We want to make the interview engaging for you. Please answer a few short questions so we can choose the best style and topics for your questions and activities. There are no right or wrong answers; just pick what fits you best.",
+    "intro_text": "A few quick questions before we start. There are no right or wrong answers; your picks just help make what comes next feel more like your life.",
     "questions": [
       {
         "id": 1,
-        "title": "Gender / Pronouns",
-        "description": "Optional, used to personalize labels and UI.",
+        "title": "How do you identify?",
+        "description": "Optional. Used only to personalize language and labels.",
         "type": "single_choice",
         "options": [
-          {"text": "Male"},
-          {"text": "Female"},
-          {"text": "Non-binary"},
-          {"text": "Prefer not to say"}
+          { "text": "He / Him" },
+          { "text": "She / Her" },
+          { "text": "They / Them" },
+          { "text": "Prefer not to say" }
         ]
       },
       {
         "id": 2,
-        "title": "Which best describes you right now?",
-        "description": "Optional. Helps us tailor examples and language.",
+        "title": "Which best describes where you're at right now?",
+        "description": "Optional. Helps match examples to your world.",
         "type": "single_choice",
         "options": [
-          {"text": "Pre high school"},
-          {"text": "In high school"},
-          {"text": "In college or university"},
-          {"text": "After college/university"}
+          { "text": "Middle school" },
+          { "text": "High school" },
+          { "text": "College or university" },
+          { "text": "Working or done with school" }
         ]
       },
       {
         "id": 3,
-        "title": "Your Interests",
-        "description": "Pick the types of activities you enjoy most in your free time, school, or hobbies. You can choose more than one.",
+        "title": "What do you actually enjoy doing?",
+        "description": "Pick everything that fits, even a little.",
         "type": "multi_choice",
         "options": [
-          {"text": "Games or competitive activities (sports, tournaments, video games)", "scenario_clusters": {"gaming": 1}},
-          {"text": "Building, coding, experimenting, or technical projects", "scenario_clusters": {"technical": 1}},
-          {"text": "Arts, storytelling, design, or other creative projects", "scenario_clusters": {"creative": 1}},
-          {"text": "Working with or helping others in a team", "scenario_clusters": {"social": 1}},
-          {"text": "Puzzles, strategy, research, or logical thinking", "scenario_clusters": {"strategic": 1}},
-          {"text": "None of these / Neutral", "scenario_clusters": {"neutral": 1}}
+          { "text": "Gaming: video games, board games, card games", "scenario_clusters": { "gaming": 2 } },
+          { "text": "Sports or physical activity", "scenario_clusters": { "gaming": 1, "social": 1 } },
+          { "text": "Creating stuff: art, music, writing, video", "scenario_clusters": { "creative": 2 } },
+          { "text": "Hanging out or doing things with friends", "scenario_clusters": { "social": 2 } },
+          { "text": "Building, coding, or making things work", "scenario_clusters": { "technical": 2 } },
+          { "text": "Puzzles, strategy, or planning ahead", "scenario_clusters": { "strategic": 2 } },
+          { "text": "Watching shows, reading, or just chilling", "scenario_clusters": { "neutral": 1 } },
+          { "text": "Honestly not sure / changes all the time", "scenario_clusters": { "neutral": 1 } }
         ]
       },
       {
         "id": 4,
-        "title": "How Do You Like to Experience Activities?",
-        "description": "Pick up to two ways you like to approach tasks or challenges. This helps make the interview interesting and fun for you.",
+        "title": "When something clicks for you, it's usually because...",
+        "description": "Pick up to two. Think about school, games, sports, whatever comes to mind.",
         "type": "multi_choice",
         "maxSelections": 2,
         "options": [
-          {"text": "I enjoy challenges and competition", "scenario_clusters": {"gaming": 1}},
-          {"text": "I like working with others to solve problems", "scenario_clusters": {"social": 1}},
-          {"text": "I enjoy experimenting and exploring ideas freely", "scenario_clusters": {"creative": 1}},
-          {"text": "I like practical, step-by-step problem solving", "scenario_clusters": {"technical": 1}},
-          {"text": "I like learning through stories, adventures, or creative scenarios", "scenario_clusters": {"creative": 1}},
-          {"text": "I prefer clear instructions with no games or stories", "scenario_clusters": {"neutral": 1}}
+          { "text": "There's a challenge or something to beat", "scenario_clusters": { "gaming": 2 } },
+          { "text": "You're figuring it out with other people", "scenario_clusters": { "social": 2 } },
+          { "text": "You get to experiment and try things your way", "scenario_clusters": { "creative": 2 } },
+          { "text": "The steps are clear and it actually makes sense", "scenario_clusters": { "technical": 2 } },
+          { "text": "There's a story or bigger picture pulling you in", "scenario_clusters": { "creative": 1, "strategic": 1 } },
+          { "text": "You're planning or solving something complex", "scenario_clusters": { "strategic": 2 } },
+          { "text": "It's just straight to the point, no fluff", "scenario_clusters": { "neutral": 2 } }
         ]
       },
       {
         "id": 5,
-        "title": "Risk and Challenge Preference",
-        "description": "This helps us adjust the difficulty and style of questions for you.",
+        "title": "What kind of vibe do you prefer?",
+        "description": "Pick one. No wrong answer, just what feels more like you.",
         "type": "single_choice",
         "options": [
-          {"text": "I enjoy taking new risks and challenges", "scenario_clusters": {"adventurous": 1}},
-          {"text": "I prefer predictable and structured tasks", "scenario_clusters": {"structured": 1}},
-          {"text": "I like a balance between risk and structure", "scenario_clusters": {"neutral": 1}}
+          { "text": "Surprise me: I like when things are unpredictable", "scenario_clusters": { "adventurous": 2 } },
+          { "text": "Keep it clear: I like knowing what to expect", "scenario_clusters": { "structured": 2 } },
+          { "text": "Somewhere in between", "scenario_clusters": { "neutral": 1 } }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "What tone feels most natural to you?",
+        "description": "This shapes how questions and scenarios are phrased.",
+        "type": "single_choice",
+        "options": [
+          { "text": "Casual and a bit funny, keep it light", "tone": "casual_humor" },
+          { "text": "Friendly but straightforward, no jokes needed", "tone": "friendly_direct" },
+          { "text": "Serious and to the point, just get on with it", "tone": "serious_direct" }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Where should the scenarios take place?",
+        "description": "Pick up to two. The situations will be set here so they actually feel relevant.",
+        "type": "multi_choice",
+        "maxSelections": 2,
+        "options": [
+          { "text": "School or class", "scenario_setting": "school" },
+          { "text": "A job or work", "scenario_setting": "work" },
+          { "text": "Sports or a team", "scenario_setting": "sports" },
+          { "text": "Hobbies", "scenario_setting": "hobbies" },
+          { "text": "With friends or socially", "scenario_setting": "social" },
+          { "text": "Online: games, content, communities", "scenario_setting": "online" },
+          { "text": "Doesn't matter: use anything", "scenario_setting": "any" }
         ]
       }
     ],

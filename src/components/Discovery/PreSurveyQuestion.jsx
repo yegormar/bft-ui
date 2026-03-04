@@ -14,8 +14,10 @@ import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 
 // Option texts that mean "none of the above" / neutral only; selecting one clears all others, and vice versa.
 const EXCLUSIVE_OPTION_TEXTS = new Set([
+  'A bit of everything / Not sure',
   'None of these / Neutral',
   'I prefer clear instructions with no games or stories',
+  'Clear instructions, no games or stories',
 ]);
 
 function isExclusiveOption(optionText) {
