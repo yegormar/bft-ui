@@ -183,7 +183,7 @@ function PreSurveyQuestion({
                 py={3}
                 borderRadius="md"
                 borderWidth="1px"
-                borderColor="chakra-border-color"
+                borderColor={selectedList.includes(opt.text) ? 'accent' : 'chakra-border-color'}
                 bg="chakra-body-bg"
                 opacity={atMax && !selectedList.includes(opt.text) ? 0.6 : 1}
                 _hover={

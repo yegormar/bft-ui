@@ -1,9 +1,18 @@
 import { extendTheme } from '@chakra-ui/react';
-import { foundations } from '@chakra-ui/theme/foundations';
 
-// Brand = one of Chakra's built-in palettes. Change this to experiment:
-// gray | red | orange | yellow | green | teal | blue | cyan | purple | pink
-const brandColors = foundations.colors.teal;
+// Brand = Chakra's built-in teal palette
+const brandColors = {
+  50: '#e6fffa',
+  100: '#b2f5ea',
+  200: '#81e6d9',
+  300: '#4fd1c5',
+  400: '#38b2ac',
+  500: '#319795',
+  600: '#285e61',
+  700: '#234e52',
+  800: '#1d4044',
+  900: '#162f32',
+};
 
 const theme = extendTheme({
   config: {
