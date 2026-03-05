@@ -207,7 +207,7 @@ export default function PreSurveyWizard({ onComplete }) {
                 >
                   Back
                 </Button>
-                {/* Check if all questions have answers (show skip button only if all answered) */}
+                {/* Check if all questions have answers (show skip button only if all answered and not on last page) */}
                 {(() => {
                   const allAnswered = QUESTIONS.every(q => {
                     const answer = answers[q.id];
@@ -217,7 +217,7 @@ export default function PreSurveyWizard({ onComplete }) {
                     return true;
                   });
                   
-                  return allAnswered ? (
+                  return allAnswered && !isLast ? (
                     <Button
                       colorScheme="gray"
                       size="lg"
