@@ -28,46 +28,22 @@ describe('computeClusterProfile', () => {
     expect(profile.weights.creative).toBeGreaterThan(0);
   });
 
-  it('sets toneInstruction from Q6 when selected', () => {
-    const answers = {
-      6: 'Casual and a bit funny, keep it light',
-    };
-    const profile = computeClusterProfile(QUESTIONS, answers);
-    expect(profile.toneInstruction).toBe('Keep it casual and a bit funny; light tone.');
-  });
-
-  it('sets toneInstruction from Q6 friendly_direct', () => {
-    const answers = {
-      6: 'Friendly but straightforward, no jokes needed',
-    };
-    const profile = computeClusterProfile(QUESTIONS, answers);
+  it('always sets toneInstruction to default friendly but straightforward', () => {
+    const profile = computeClusterProfile(QUESTIONS, {});
     expect(profile.toneInstruction).toBe('Friendly but straightforward; no jokes needed.');
   });
 
-  it('falls back to Q5 secondaryTone when Q6 not answered', () => {
+  it('sets secondaryTone from Q5 vibe when selected', () => {
     const answers = {
       5: 'Surprise me: I like when things are unpredictable',
     };
     const profile = computeClusterProfile(QUESTIONS, answers);
     expect(profile.secondaryTone).toBe('adventurous');
-    expect(profile.toneInstruction).toBe('Prefer scenarios with some novelty or unpredictability.');
+    expect(profile.toneInstruction).toBe('Friendly but straightforward; no jokes needed.');
   });
 
-  it('sets preferredSettings from Q7', () => {
-    const answers = {
-      7: ['School or class', 'Online: games, content, communities'],
-    };
-    const profile = computeClusterProfile(QUESTIONS, answers);
-    expect(profile.preferredSettings).toContain('school');
-    expect(profile.preferredSettings).toContain('online');
-    expect(profile.preferredSettings).not.toContain('any');
-  });
-
-  it('excludes "any" from preferredSettings', () => {
-    const answers = {
-      7: ['Doesn\'t matter: use anything'],
-    };
-    const profile = computeClusterProfile(QUESTIONS, answers);
+  it('returns empty preferredSettings (no settings question)', () => {
+    const profile = computeClusterProfile(QUESTIONS, {});
     expect(profile.preferredSettings).toEqual([]);
   });
 

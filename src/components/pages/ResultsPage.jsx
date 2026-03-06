@@ -134,6 +134,10 @@ export default function ResultsPage() {
   const insights = report?.insights ?? [];
   const summaryLLM = report?.strengthProfileSummaryLLM ?? null;
   const summaryHybrid = report?.strengthProfileSummaryHybrid ?? null;
+  const dimensionScores = report?.dimensionScores ?? { traits: [], values: [] };
+  const traitsList = dimensionScores.traits ?? [];
+  const valuesList = dimensionScores.values ?? [];
+  const hasDimensionScores = traitsList.length > 0 || valuesList.length > 0;
 
   return (
     <>
@@ -147,6 +151,86 @@ export default function ResultsPage() {
               Here’s what we learned about your strengths and where you might want to grow. Expand any section below to read more.
             </Text>
             <Accordion allowMultiple defaultIndex={[0]} w="full">
+              {hasDimensionScores && (
+                <AccordionItem
+                  borderWidth="1px"
+                  borderRadius="lg"
+                  borderColor="chakra-border-color"
+                  borderLeftWidth="4px"
+                  borderLeftColor="accent"
+                  mb={3}
+                  overflow="hidden"
+                  bg="chakra-body-bg"
+                  boxShadow="sm"
+                >
+                  <AccordionButton py={4} px={4} _expanded={{ bg: 'blackAlpha.50' }}>
+                    <Box as="span" flex="1" textAlign="left" fontWeight="semibold">
+                      Traits and values (calculated) ({traitsList.length + valuesList.length} {traitsList.length + valuesList.length === 1 ? 'dimension' : 'dimensions'})
+                    </Box>
+                    <AccordionIcon />
+                  </AccordionButton>
+                  <AccordionPanel pb={4} px={4} pt={0} bg="blackAlpha.50">
+                    <VStack align="stretch" spacing={3}>
+                      {traitsList.length > 0 && (
+                        <>
+                          <Text fontWeight="medium" fontSize="sm" color="chakra-subtle-text">
+                            Traits (how you tend to behave)
+                          </Text>
+                          {traitsList.map((d) => (
+                            <Box
+                              key={`trait-${d.id}`}
+                              p={3}
+                              borderWidth="1px"
+                              borderRadius="md"
+                              borderColor="chakra-border-color"
+                              bg="white"
+                              _dark={{ bg: 'whiteAlpha.100' }}
+                            >
+                              <Text fontWeight="medium" fontSize="sm" mb={1}>
+                                {d.name}
+                              </Text>
+                              <Box fontSize="sm" color="chakra-subtle-text">
+                                <Text>Score: {d.mean} ({d.band})</Text>
+                                {d.count != null && (
+                                  <Text>Based on {d.count} {d.count === 1 ? 'answer' : 'answers'}</Text>
+                                )}
+                              </Box>
+                            </Box>
+                          ))}
+                        </>
+                      )}
+                      {valuesList.length > 0 && (
+                        <>
+                          <Text fontWeight="medium" fontSize="sm" color="chakra-subtle-text" pt={traitsList.length > 0 ? 2 : 0}>
+                            Values (what matters to you)
+                          </Text>
+                          {valuesList.map((d) => (
+                            <Box
+                              key={`value-${d.id}`}
+                              p={3}
+                              borderWidth="1px"
+                              borderRadius="md"
+                              borderColor="chakra-border-color"
+                              bg="white"
+                              _dark={{ bg: 'whiteAlpha.100' }}
+                            >
+                              <Text fontWeight="medium" fontSize="sm" mb={1}>
+                                {d.name}
+                              </Text>
+                              <Box fontSize="sm" color="chakra-subtle-text">
+                                <Text>Score: {d.mean} ({d.band})</Text>
+                                {d.count != null && (
+                                  <Text>Based on {d.count} {d.count === 1 ? 'answer' : 'answers'}</Text>
+                                )}
+                              </Box>
+                            </Box>
+                          ))}
+                        </>
+                      )}
+                    </VStack>
+                  </AccordionPanel>
+                </AccordionItem>
+              )}
               {summaryLLM && (
                 <AccordionItem
                   borderWidth="1px"
@@ -258,7 +342,7 @@ export default function ResultsPage() {
                 </AccordionItem>
               )}
             </Accordion>
-            {!summaryLLM && !summaryHybrid && insights.length === 0 && (
+            {!summaryLLM && !summaryHybrid && insights.length === 0 && !hasDimensionScores && (
               <Text fontSize="sm" color="chakra-subtle-text" mt={2}>
                 No insights yet. Complete a discovery to build your profile.
               </Text>
