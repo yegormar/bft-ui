@@ -8,12 +8,15 @@ import {
   Divider,
   Flex,
   Link,
+  Code,
+  Button,
 } from '@chakra-ui/react';
 import {
   Users,
   Lightbulb,
   ShieldCheck,
   ChartBar,
+  Code2,
 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 
@@ -40,10 +43,25 @@ const missionItems = [
   },
 ];
 
-const teamInfo = [
-  { label: 'Status', value: 'Active Project' },
-  { label: 'Type', value: 'Student Project' },
-  { label: 'Purpose', value: 'Career Guidance Tool' },
+const devTeam = [
+  {
+    name: 'Leo Cook',
+    role: 'Project Lead & Architect',
+    bio: 'Guides the project vision and architecture, with deep expertise in full-stack development and AI integration.',
+    image: 'https://ui-avatars.com/api/?name=Leo+Cook&background=random&size=128',
+  },
+  {
+    name: 'Yegor Markov',
+    role: 'Frontend Developer',
+    bio: 'Builds intuitive user experiences with React and Chakra UI, focusing on accessibility and usability.',
+    image: 'https://ui-avatars.com/api/?name=Yegor+Markov&background=random&size=128',
+  },
+  {
+    name: 'Eric He',
+    role: 'Backend Engineer',
+    bio: 'Designs the API and assessment engine, specializing in Node.js, Express, and AI-powered interviews.',
+    image: 'https://ui-avatars.com/api/?name=Eric+He&background=random&size=128',
+  },
 ];
 
 const CONTENT_MAX_W = '2xl';
@@ -62,7 +80,8 @@ function AboutPage() {
               Understanding your strengths for a better future
             </Text>
             <Text fontSize="md" color="chakra-subtle-text" maxW="2xl">
-              An exploratory tool helping students and young adults navigate the complex world of work.
+              An exploratory tool helping students and young adults navigate the complex world of work
+              through AI-powered insights and career guidance.
             </Text>
           </VStack>
         </Container>
@@ -91,7 +110,7 @@ function AboutPage() {
               </Text>
               <Text mt={4} fontSize="md" color="chakra-body-text" lineHeight="tall">
                 We believe the answer isn't about finding a single "correct" path, but rather understanding your unique strengths,
-                values, and interests—and seeing how they can translate into meaningful work in a rapidly changing world.
+                values, and interests—and seeing how they can translate into meaningful work in a rapidly changing world shaped by AI.
               </Text>
             </Box>
 
@@ -131,7 +150,31 @@ function AboutPage() {
         </Container>
       </Box>
 
+      {/* AI-Era Labor Section */}
       <Box bg="chakra-subtle-bg" py={8} px={4} borderTopWidth="1px" borderColor="chakra-border-color">
+        <Container maxW={CONTENT_MAX_W}>
+          <VStack spacing={6} align="stretch">
+            <Box>
+              <Heading
+                as="h2"
+                size="md"
+                mb={4}
+                color="chakra-body-text"
+                fontWeight="semibold"
+                data-testid="about-thesis-title"
+              >
+                AI-Era Labor
+              </Heading>
+              <Text fontSize="md" color="chakra-body-text" lineHeight="tall">
+                Our assessment model is grounded in a specific view of how AI is reshaping the labor landscape over the next 10-15 years. Routine cognitive processing is becoming cheap and abundant, while the human premium shifts to designing, governing, and humanizing intelligent systems, plus operating physical and institutional infrastructure. This means skills related to systems thinking, AI governance, decision ownership, and cross-cutting meta-skills like adaptability and ambiguity tolerance will grow in value, while routine digital execution and structured analysis will decline.
+              </Text>
+            </Box>
+          </VStack>
+        </Container>
+      </Box>
+
+      {/* Our Approach Section */}
+      <Box bg="chakra-body-bg" py={12} px={4}>
         <Container maxW={CONTENT_MAX_W}>
           <VStack spacing={6} align="stretch">
             <Box>
@@ -158,8 +201,73 @@ function AboutPage() {
               </Text>
             </Box>
 
-            <Divider />
+            {/* Developer Section */}
+            <Box
+              p={6}
+              w="full"
+              borderRadius="lg"
+              borderWidth="1px"
+              borderColor="chakra-border-color"
+              borderLeftWidth="4px"
+              borderLeftColor="accent"
+              bg="chakra-body-bg"
+              boxShadow="sm"
+            >
+              <Heading
+                as="h3"
+                size="lg"
+                mb={6}
+                color="chakra-body-text"
+                fontWeight="semibold"
+                display="flex"
+                alignItems="center"
+                gap={3}
+              >
+                <Code2 size={28} />
+                Meet the Developers
+              </Heading>
 
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
+                {devTeam.map((member) => (
+                  <Box
+                    key={member.name}
+                    p={5}
+                    bg="chakra-body-bg"
+                    borderRadius="lg"
+                    borderWidth="1px"
+                    borderColor="chakra-border-color"
+                  >
+                    <VStack align="start" spacing={3}>
+                      <Box borderRadius="full" overflow="hidden" borderWidth="2px" borderColor="accent">
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                        />
+                      </Box>
+                      <Box>
+                        <Heading as="h4" size="md" fontWeight="semibold" color="chakra-body-text" mb={1}>
+                          {member.name}
+                        </Heading>
+                        <Text fontSize="sm" color="accent" fontWeight="medium">
+                          {member.role}
+                        </Text>
+                      </Box>
+                      <Text fontSize="sm" color="chakra-subtle-text" lineHeight="tall">
+                        {member.bio}
+                      </Text>
+                    </VStack>
+                  </Box>
+                ))}
+              </SimpleGrid>
+            </Box>
+          </VStack>
+        </Container>
+      </Box>
+
+      <Box bg="chakra-subtle-bg" py={8} px={4} borderTopWidth="1px" borderColor="chakra-border-color">
+        <Container maxW={CONTENT_MAX_W}>
+          <VStack spacing={6} align="stretch">
             <Box>
               <Heading
                 as="h2"
@@ -169,7 +277,7 @@ function AboutPage() {
                 fontWeight="semibold"
                 data-testid="about-tech-title"
               >
-                Technology & Framework
+                Technology Stack
               </Heading>
               <Text fontSize="md" color="chakra-body-text" lineHeight="tall">
                 Built for Tomorrow is built using modern web technologies including React, Chakra UI, and integrates with advanced AI models

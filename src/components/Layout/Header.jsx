@@ -50,13 +50,13 @@ function Header() {
               </Link>
             </Tooltip>
           </HStack>
-        <HStack spacing={2}>
+        <HStack spacing={4}>
           <IconButton
             aria-label={colorMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
             icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
             onClick={toggleColorMode}
             variant="ghost"
-            size="sm"
+            size="lg"
             data-testid="color-mode-toggle"
           />
           <IconButton
@@ -64,16 +64,16 @@ function Header() {
             icon={<span style={{ fontSize: '1.2rem' }}>{locale === 'en' ? 'EN' : 'FR'}</span>}
             onClick={toggleLanguage}
             variant="ghost"
-            size="sm"
+            size="lg"
             data-testid="language-toggle"
           />
           <Menu>
             <MenuButton
               as={IconButton}
               aria-label="Open menu"
-              icon={<HamburgerIcon />}
+              icon={<HamburgerIcon boxSize={6} />}
               variant="ghost"
-              size="sm"
+              size="lg"
             />
             <MenuList>
               <MenuItem {...menuLinkProps('/discovery')} data-testid="menu-discovery">
