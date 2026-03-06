@@ -27,6 +27,7 @@ export default function MainSurvey({ clusterProfile }) {
   const [submitting, setSubmitting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [completed, setCompleted] = useState(false);
 
   const fetchNext = useCallback(async (sid) => {
@@ -60,7 +61,12 @@ export default function MainSurvey({ clusterProfile }) {
         setSessionId(session.id);
         await fetchNext(session.id);
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Failed to start survey');
+        if (!cancelled) {
+          const is503 = err.status === 503;
+          setError(is503 && err.body?.message ? err.body.message : err.message || 'Failed to start survey');
+          setServiceUnavailable(is503);
+          if (is503 && err.body?.progress) setProgress(err.body.progress);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -76,15 +82,36 @@ export default function MainSurvey({ clusterProfile }) {
       question.type === 'single_choice' ? payloadValue[0] : question.type === 'rank' ? payloadValue : payloadValue;
     setSubmitting(true);
     setError(null);
+    setServiceUnavailable(false);
     try {
       await submitAnswers(sessionId, [
         { questionId: question.id, value: singleVal },
       ]);
       await fetchNext(sessionId);
     } catch (err) {
-      setError(err.message || 'Failed to submit');
+      const is503 = err.status === 503;
+      setError(is503 && err.body?.message ? err.body.message : err.message || 'Failed to submit');
+      setServiceUnavailable(is503);
+      if (is503 && err.body?.progress) setProgress(err.body.progress);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRetryFetch = async () => {
+    if (!sessionId) return;
+    setRetrying(true);
+    setError(null);
+    setServiceUnavailable(false);
+    try {
+      await fetchNext(sessionId);
+    } catch (err) {
+      const is503 = err.status === 503;
+      setError(is503 && err.body?.message ? err.body.message : err.message || 'Failed to load next question');
+      setServiceUnavailable(is503);
+      if (is503 && err.body?.progress) setProgress(err.body.progress);
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -116,10 +143,22 @@ export default function MainSurvey({ clusterProfile }) {
             <Text color="red.500" fontWeight="medium">
               {error}
             </Text>
-            <Text fontSize="sm" color="chakra-subtle-text">
-              Start the API in another terminal: <code>{'cd bft-api && npm run dev'}</code>. The
-              UI proxies /api to the API when both run locally.
-            </Text>
+            {!serviceUnavailable && (
+              <Text fontSize="sm" color="chakra-subtle-text">
+                Start the API in another terminal: <code>{'cd bft-api && npm run dev'}</code>. The
+                UI proxies /api to the API when both run locally.
+              </Text>
+            )}
+            {sessionId && (
+              <Button
+                colorScheme="brand"
+                onClick={handleRetryFetch}
+                isLoading={retrying}
+                loadingText="Loading..."
+              >
+                Try again
+              </Button>
+            )}
           </VStack>
         </Container>
       </Box>
@@ -179,32 +218,21 @@ export default function MainSurvey({ clusterProfile }) {
         <Container maxW="2xl" centerContent>
           <VStack spacing={4} align="stretch" maxW="md">
             <Text color="red.500" fontWeight="medium">
-              No next question was returned. Your answer was saved.
+              {error || 'No next question was returned. Your answer was saved.'}
             </Text>
             <Text fontSize="sm" color="chakra-subtle-text">
-              This can happen when the assistant could not generate the next step. You can try again
-              or refresh the page.
+              You can try again to load the next question.
             </Text>
-            <Button
-              colorScheme="brand"
-              onClick={async () => {
-                if (!sessionId) return;
-                setRetrying(true);
-                setError(null);
-                try {
-                  await fetchNext(sessionId);
-                } catch (err) {
-                  setError(err.message || 'Failed to load next question');
-                } finally {
-                  setRetrying(false);
-                }
-              }}
-              isDisabled={!sessionId}
-              isLoading={retrying}
-              loadingText="Loading..."
-            >
-              Try again
-            </Button>
+            {sessionId && (
+              <Button
+                colorScheme="brand"
+                onClick={handleRetryFetch}
+                isLoading={retrying}
+                loadingText="Loading..."
+              >
+                Try again
+              </Button>
+            )}
           </VStack>
         </Container>
       </Box>
@@ -255,20 +283,35 @@ export default function MainSurvey({ clusterProfile }) {
               optional={false}
               maxSelections={maxSelections}
             />
-            <Box w="full" display="flex" justifyContent="flex-end" mt={4}>
-              <Button
-                colorScheme="brand"
-                size="lg"
-                onClick={handleNext}
-                isDisabled={!canProceed() || submitting}
-                minH="44px"
-                px={6}
-                isLoading={submitting}
-                loadingText="Submitting..."
-                data-testid="main-survey-next"
-              >
-                Next
-              </Button>
+            <Box w="full" display="flex" justifyContent="flex-end" mt={4} gap={3}>
+              {serviceUnavailable ? (
+                <Button
+                  colorScheme="brand"
+                  size="lg"
+                  onClick={handleRetryFetch}
+                  minH="44px"
+                  px={6}
+                  isLoading={retrying}
+                  loadingText="Loading..."
+                  data-testid="main-survey-retry"
+                >
+                  Try again
+                </Button>
+              ) : (
+                <Button
+                  colorScheme="brand"
+                  size="lg"
+                  onClick={handleNext}
+                  isDisabled={!canProceed() || submitting}
+                  minH="44px"
+                  px={6}
+                  isLoading={submitting}
+                  loadingText="Submitting..."
+                  data-testid="main-survey-next"
+                >
+                  Next
+                </Button>
+              )}
             </Box>
           </Box>
         </VStack>

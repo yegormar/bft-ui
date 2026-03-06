@@ -68,33 +68,6 @@
           { "text": "Keep it clear: I like knowing what to expect", "scenario_clusters": { "structured": 2 } },
           { "text": "Somewhere in between", "scenario_clusters": { "neutral": 1 } }
         ]
-      },
-      {
-        "id": 6,
-        "title": "What tone feels most natural to you?",
-        "description": "This shapes how questions and scenarios are phrased.",
-        "type": "single_choice",
-        "options": [
-          { "text": "Casual and a bit funny, keep it light", "tone": "casual_humor" },
-          { "text": "Friendly but straightforward, no jokes needed", "tone": "friendly_direct" },
-          { "text": "Serious and to the point, just get on with it", "tone": "serious_direct" }
-        ]
-      },
-      {
-        "id": 7,
-        "title": "Where should the scenarios take place?",
-        "description": "Pick up to two. The situations will be set here so they actually feel relevant.",
-        "type": "multi_choice",
-        "maxSelections": 2,
-        "options": [
-          { "text": "School or class", "scenario_setting": "school" },
-          { "text": "A job or work", "scenario_setting": "work" },
-          { "text": "Sports or a team", "scenario_setting": "sports" },
-          { "text": "Hobbies", "scenario_setting": "hobbies" },
-          { "text": "With friends or socially", "scenario_setting": "social" },
-          { "text": "Online: games, content, communities", "scenario_setting": "online" },
-          { "text": "Doesn't matter: use anything", "scenario_setting": "any" }
-        ]
       }
     ],
     "profile_logic": {
