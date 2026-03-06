@@ -1,7 +1,13 @@
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Box, Flex, HStack, IconButton, Link, Tooltip, useColorMode, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import { MoonIcon, SunIcon, HamburgerIcon } from '@chakra-ui/icons';
+import { Box, Button, Flex, HStack, IconButton, Link, Tooltip, useColorMode, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
+import { MoonIcon, SunIcon, HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { Languages } from 'lucide-react';
+
+const LOCALES = [
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'Français' },
+];
 
 function Header() {
   const location = useLocation();
@@ -11,11 +17,12 @@ function Header() {
     return saved || 'en';
   });
 
-  const toggleLanguage = () => {
-    const newLocale = locale === 'en' ? 'fr' : 'en';
+  const setLanguage = (newLocale) => {
     setLocale(newLocale);
     localStorage.setItem('locale', newLocale);
   };
+
+  const currentLocaleLabel = LOCALES.find((l) => l.value === locale)?.label ?? locale.toUpperCase();
 
   const linkProps = (path) => ({
     as: RouterLink,
@@ -45,7 +52,7 @@ function Header() {
               <Link {...linkProps('/')} data-testid="nav-home" display="flex" alignItems="center">
                 <HStack spacing={2} as="span">
                   <Box as="img" src="/favicon.svg" alt="" h="8" w="auto" />
-                  <Box as="span">BFT</Box>
+                  <Box as="span" fontWeight="bold">BFT</Box>
                 </HStack>
               </Link>
             </Tooltip>
@@ -59,14 +66,34 @@ function Header() {
             size="lg"
             data-testid="color-mode-toggle"
           />
-          <IconButton
-            aria-label={`Switch to ${locale === 'en' ? 'French' : 'English'}`}
-            icon={<span style={{ fontSize: '1.2rem' }}>{locale === 'en' ? 'EN' : 'FR'}</span>}
-            onClick={toggleLanguage}
-            variant="ghost"
-            size="lg"
-            data-testid="language-toggle"
-          />
+          <Tooltip label="Select language" hasArrow>
+            <Menu>
+              <MenuButton
+                as={Button}
+                leftIcon={<Box as="span" lineHeight={0}><Languages size={20} strokeWidth={2} /></Box>}
+                rightIcon={<ChevronDownIcon />}
+                variant="ghost"
+                size="lg"
+                fontWeight="normal"
+                data-testid="language-dropdown"
+                aria-label="Select language"
+              >
+                {currentLocaleLabel}
+              </MenuButton>
+            <MenuList>
+              {LOCALES.map((l) => (
+                <MenuItem
+                  key={l.value}
+                  onClick={() => setLanguage(l.value)}
+                  fontWeight={locale === l.value ? 'bold' : 'normal'}
+                  data-testid={`language-option-${l.value}`}
+                >
+                  {l.label}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Menu>
+          </Tooltip>
           <Menu>
             <MenuButton
               as={IconButton}

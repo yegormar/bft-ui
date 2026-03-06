@@ -136,19 +136,23 @@ export default function MainSurvey({ clusterProfile }) {
   }
 
   if (error && !question) {
+    const isConnectionError =
+      !serviceUnavailable &&
+      (error.includes('Gateway') || error.includes('Network') || error.includes('Failed to fetch'));
+    const displayMessage = isConnectionError
+      ? 'The server is not responding. We could not start your discovery.'
+      : error;
+
     return (
       <Box py={{ base: 6, md: 10 }} px={4} data-testid="page-discovery">
         <Container maxW="2xl" centerContent>
           <VStack spacing={4} align="stretch" maxW="md">
             <Text color="red.500" fontWeight="medium">
-              {error}
+              {displayMessage}
             </Text>
-            {!serviceUnavailable && (
-              <Text fontSize="sm" color="chakra-subtle-text">
-                Start the API in another terminal: <code>{'cd bft-api && npm run dev'}</code>. The
-                UI proxies /api to the API when both run locally.
-              </Text>
-            )}
+            <Text fontSize="sm" color="chakra-subtle-text">
+              The backend service may be down or unreachable. Please try again in a moment.
+            </Text>
             {sessionId && (
               <Button
                 colorScheme="brand"

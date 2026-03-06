@@ -1,5 +1,35 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+
+/** Version string: 'dev' in dev server, ISO timestamp on each build. */
+let buildVersion = 'dev';
+
+function buildVersionPlugin() {
+  return {
+    name: 'build-version',
+    resolveId(id) {
+      if (id === 'virtual:build-version') return '\0virtual:build-version';
+      return null;
+    },
+    load(id) {
+      if (id === '\0virtual:build-version') {
+        return `export const version = ${JSON.stringify(buildVersion)};`;
+      }
+      return null;
+    },
+    buildStart() {
+      buildVersion = new Date().toISOString();
+    },
+    writeBundle(options) {
+      const dir = options.dir;
+      if (!dir) return;
+      const versionPath = path.join(dir, 'version.json');
+      fs.writeFileSync(versionPath, JSON.stringify({ version: buildVersion }) + '\n');
+    },
+  };
+}
 
 function exit(message) {
   console.error('[vite config]', message);
@@ -36,7 +66,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = apiPort ? `http://localhost:${apiPort}` : '';
 
   return {
-    plugins: [react()],
+    plugins: [buildVersionPlugin(), react()],
     build: {
       outDir: 'dist',
     },
