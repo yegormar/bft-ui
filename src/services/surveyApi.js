@@ -46,6 +46,12 @@ export async function getAssessment(sessionId) {
   return request('GET', `/sessions/${sessionId}/assessment`);
 }
 
-export async function getReport(sessionId) {
-  return request('GET', `/sessions/${sessionId}/report`);
+/**
+ * Get report. By default returns core only (dimensions, skills; no LLM).
+ * Pass { includeLlm: true } for profile summary and recommendations (triggers LLM).
+ */
+export async function getReport(sessionId, options = {}) {
+  const includeFull = options.includeLlm === true;
+  const path = includeFull ? `/sessions/${sessionId}/report?include=full` : `/sessions/${sessionId}/report`;
+  return request('GET', path);
 }

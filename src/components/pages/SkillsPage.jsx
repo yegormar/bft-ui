@@ -313,8 +313,8 @@ export default function SkillsPage() {
     return (
       <>
         <PageHero title="Skills for you" tagline="Skills that match your strengths." />
-        <Box as="main" py={12} px={4} bg="chakra-body-bg" data-testid="page-skills">
-          <Container maxW="2xl" centerContent>
+        <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
+          <Container maxW="2xl" centerContent p={0}>
             <Box
               p={6}
               borderRadius="lg"
@@ -346,8 +346,8 @@ export default function SkillsPage() {
     return (
       <>
         <PageHero title="Skills for you" tagline="Skills that match your strengths." />
-        <Box as="main" py={12} px={4} bg="chakra-body-bg" data-testid="page-skills">
-          <Container maxW="2xl" centerContent>
+        <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
+          <Container maxW="2xl" centerContent p={0}>
             <VStack spacing={4}>
               <Spinner size="lg" colorScheme="brand" />
               <Text color="chakra-subtle-text">Loading your skills...</Text>
@@ -362,8 +362,8 @@ export default function SkillsPage() {
     return (
       <>
         <PageHero title="Skills for you" tagline="Skills that match your strengths." />
-        <Box as="main" py={12} px={4} bg="chakra-body-bg" data-testid="page-skills">
-          <Container maxW="2xl" centerContent>
+        <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
+          <Container maxW="2xl" centerContent p={0}>
             <Box
               p={6}
               borderRadius="lg"
@@ -392,8 +392,8 @@ export default function SkillsPage() {
   return (
     <>
       <PageHero title="Skills for you" tagline="Skills that match your strengths." />
-      <Box as="main" py={4} px={4} bg="chakra-body-bg" data-testid="page-skills">
-        <Container maxW="2xl">
+      <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
+        <Container maxW="2xl" p={0}>
           <VStack align="stretch" spacing={{ base: 2, md: 4 }} w="full">
             <Box>
               <Button
@@ -411,9 +411,13 @@ export default function SkillsPage() {
 
             {rawSkills.length > 0 && (
               <Box w="full">
-                <Text fontWeight="medium" fontSize="sm" mb={1} color="chakra-subtle-text">
-                  You (blue) vs what'll matter with AI (red). Further out = better.
-                </Text>
+                <HStack fontWeight="medium" fontSize="sm" mb={2} color="chakra-subtle-text" spacing={1.5} flexWrap="wrap" align="center" as="p">
+                  <Text as="span">You</Text>
+                  <Box as="span" w={3} h={3} borderRadius="sm" bg="blue.400" flexShrink={0} />
+                  <Text as="span">vs what'll matter with AI.</Text>
+                  <Box as="span" w={3} h={3} borderRadius="sm" bg="red.400" flexShrink={0} />
+                  <Text as="span">Further out = better.</Text>
+                </HStack>
                 <SkillsRadarChart skills={rawSkills} maxApplicability={maxApplicability} />
               </Box>
             )}

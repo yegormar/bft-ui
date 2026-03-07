@@ -4,7 +4,7 @@
  * Based on the reference: smooth circles, clear axis/background colors, more graph than labels.
  */
 
-import { Box, HStack, Text, useBreakpointValue, useColorModeValue } from '@chakra-ui/react';
+import { Box, Text, useBreakpointValue, useColorModeValue } from '@chakra-ui/react';
 import { ResponsiveRadar } from '@nivo/radar';
 
 const SCALE_MIN = 1;
@@ -226,7 +226,8 @@ function GridLabelTwoLines({ id, anchor, x, y, animated }) {
 }
 
 const CHART_MARGIN_BASE = { top: 0, right: 24, bottom: 24, left: 24 };
-const CHART_MARGIN_MD = { top: 12, right: 40, bottom: 40, left: 40 };
+/** Top margin on desktop so dimension labels don't overlap the caption above (match DimensionsRadarChart). */
+const CHART_MARGIN_MD = { top: 48, right: 40, bottom: 40, left: 40 };
 
 export default function SkillsRadarChart({ skills, maxApplicability }) {
   const data = buildChartData(skills, maxApplicability);
@@ -235,7 +236,6 @@ export default function SkillsRadarChart({ skills, maxApplicability }) {
   const chartMargin = useBreakpointValue({ base: CHART_MARGIN_BASE, md: CHART_MARGIN_MD });
   const gridStroke = useColorModeValue('rgba(100, 116, 139, 0.4)', 'rgba(148, 163, 184, 0.45)');
   const labelColor = useColorModeValue('#475569', '#94a3b8');
-  const legendColor = useColorModeValue('#334155', '#e2e8f0');
   const pageBg = useColorModeValue('transparent', 'transparent');
 
   if (data.length === 0) return null;
@@ -244,25 +244,11 @@ export default function SkillsRadarChart({ skills, maxApplicability }) {
     <Box
       w="full"
       minH={{ base: '340px', md: '520px' }}
-      py={{ base: 1, md: 6 }}
-      px={2}
+      py={0}
+      px={0}
       bg={pageBg}
       sx={{ '& svg': { shapeRendering: 'geometricPrecision' } }}
     >
-      <HStack spacing={4} mb={0} justify="center" flexWrap="wrap">
-        <HStack spacing={2} align="center">
-          <Box w={3} h={3} borderRadius="sm" bg={BLUE_FILL} flexShrink={0} />
-          <Text fontSize="sm" fontWeight={500} color={legendColor}>
-            You
-          </Text>
-        </HStack>
-        <HStack spacing={2} align="center">
-          <Box w={3} h={3} borderRadius="sm" bg={RED_FILL} flexShrink={0} />
-          <Text fontSize="sm" fontWeight={500} color={legendColor}>
-            AI future
-          </Text>
-        </HStack>
-      </HStack>
       <Box h={{ base: '360px', md: '540px' }} w="full" position="relative">
         <ResponsiveRadar
           data={data}

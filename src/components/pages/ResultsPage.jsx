@@ -2,44 +2,36 @@ import {
   Box,
   Button,
   Container,
+  HStack,
   SimpleGrid,
+  Spinner,
   Text,
   VStack,
 } from '@chakra-ui/react';
 import { BarChart3, Briefcase, Heart, ListChecks, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
+import { getReport } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
 const HUB_LINKS = [
-  {
-    to: '/skills',
-    stateKey: 'sessionId',
-    title: 'Skills Analysis',
-    description: 'See skills that fit your profile and how they trend with AI.',
-    icon: BarChart3,
-  },
-  {
-    to: '/recommendations',
-    stateKey: 'sessionId',
-    title: 'Career option',
-    description: 'Career directions that fit you and directions to avoid.',
-    icon: Briefcase,
-  },
   {
     to: '/results/traits-values',
     stateKey: 'sessionId',
     title: 'Traits and Values',
     description: 'Your calculated traits, values, and aptitudes.',
     icon: Heart,
+    requiresLlm: false,
   },
   {
-    to: '/results/answers',
+    to: '/skills',
     stateKey: 'sessionId',
-    title: 'Your answers',
-    description: 'Questions you answered. Change answers and recalculate results.',
-    icon: ListChecks,
+    title: 'Skills analysis',
+    description: 'See skills that fit your profile and how they trend with AI.',
+    icon: BarChart3,
+    requiresLlm: false,
   },
   {
     to: '/results/profile',
@@ -47,10 +39,75 @@ const HUB_LINKS = [
     title: 'Profile Summary',
     description: 'Your discovered strengths.',
     icon: Sparkles,
+    requiresLlm: true,
+  },
+  {
+    to: '/recommendations',
+    stateKey: 'sessionId',
+    title: 'Career option',
+    description: 'Career directions that fit you and directions to avoid.',
+    icon: Briefcase,
+    requiresLlm: true,
+  },
+  {
+    to: '/results/answers',
+    stateKey: 'sessionId',
+    title: 'Your answers',
+    description: 'Questions you answered. Change answers and recalculate results.',
+    icon: ListChecks,
+    requiresLlm: false,
   },
 ];
 
-function HubButton({ to, state, title, description, icon: Icon }) {
+function HubButton({ to, state, title, description, icon: Icon, disabled, preparing }) {
+  const content = (
+    <VStack align="stretch" spacing={3} w="full">
+      <Box color={disabled ? 'chakra-subtle-text' : 'brand.500'} lineHeight={0}>
+        <Icon size={28} strokeWidth={2} />
+      </Box>
+      <Text fontWeight="semibold" fontSize="lg">
+        {title}
+      </Text>
+      <Text fontSize="sm" color="chakra-subtle-text" fontWeight="normal" lineHeight="tall">
+        {description}
+      </Text>
+      {preparing && (
+        <HStack spacing={2} mt={1}>
+          <Spinner size="sm" />
+          <Text fontSize="xs" color="chakra-subtle-text">
+            Preparing...
+          </Text>
+        </HStack>
+      )}
+    </VStack>
+  );
+
+  if (disabled) {
+    return (
+      <Button
+        variant="outline"
+        colorScheme="gray"
+        size="lg"
+        height="auto"
+        minH="28"
+        py={6}
+        px={6}
+        textAlign="left"
+        justifyContent="flex-start"
+        alignItems="flex-start"
+        whiteSpace="normal"
+        w="full"
+        boxShadow="sm"
+        isDisabled
+        cursor="not-allowed"
+        opacity={0.85}
+        data-testid={`results-hub-${title.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        {content}
+      </Button>
+    );
+  }
+
   return (
     <Button
       as={RouterLink}
@@ -73,17 +130,7 @@ function HubButton({ to, state, title, description, icon: Icon }) {
       _dark={{ _hover: { bg: 'whiteAlpha.50' } }}
       data-testid={`results-hub-${title.toLowerCase().replace(/\s+/g, '-')}`}
     >
-      <VStack align="stretch" spacing={3} w="full">
-        <Box color="brand.500" lineHeight={0}>
-          <Icon size={28} strokeWidth={2} />
-        </Box>
-        <Text fontWeight="semibold" fontSize="lg">
-          {title}
-        </Text>
-        <Text fontSize="sm" color="chakra-subtle-text" fontWeight="normal" lineHeight="tall">
-          {description}
-        </Text>
-      </VStack>
+      {content}
     </Button>
   );
 }
@@ -92,6 +139,18 @@ export default function ResultsPage() {
   const location = useLocation();
   const resolvedSessionId =
     location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
+  const [fullReportReady, setFullReportReady] = useState(false);
+
+  const triggerFullReport = useCallback((sid) => {
+    getReport(sid, { includeLlm: true })
+      .then(() => setFullReportReady(true))
+      .catch(() => setFullReportReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!resolvedSessionId) return;
+    triggerFullReport(resolvedSessionId);
+  }, [resolvedSessionId, triggerFullReport]);
 
   if (!resolvedSessionId) {
     return (
@@ -148,6 +207,8 @@ export default function ResultsPage() {
                 title={link.title}
                 description={link.description}
                 icon={link.icon}
+                disabled={link.requiresLlm && !fullReportReady}
+                preparing={link.requiresLlm && !fullReportReady}
               />
             ))}
           </SimpleGrid>

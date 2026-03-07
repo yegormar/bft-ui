@@ -29,7 +29,7 @@ export default function RecommendationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getReport(sid);
+      const data = await getReport(sid, { includeLlm: true });
       setReport(data);
     } catch (err) {
       setError(err.message || 'We couldn\'t load your careers. Try again or start a new discovery.');

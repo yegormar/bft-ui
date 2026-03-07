@@ -28,7 +28,7 @@ export default function ResultsProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getReport(sid);
+      const data = await getReport(sid, { includeLlm: true });
       setReport(data);
     } catch (err) {
       setError(err.message || 'We couldn\'t load your profile. Try again or start a new discovery.');
