@@ -225,8 +225,8 @@ function GridLabelTwoLines({ id, anchor, x, y, animated }) {
   );
 }
 
-const CHART_MARGIN_BASE = { top: 24, right: 24, bottom: 24, left: 24 };
-const CHART_MARGIN_MD = { top: 40, right: 40, bottom: 40, left: 40 };
+const CHART_MARGIN_BASE = { top: 0, right: 24, bottom: 24, left: 24 };
+const CHART_MARGIN_MD = { top: 12, right: 40, bottom: 40, left: 40 };
 
 export default function SkillsRadarChart({ skills, maxApplicability }) {
   const data = buildChartData(skills, maxApplicability);
@@ -249,7 +249,7 @@ export default function SkillsRadarChart({ skills, maxApplicability }) {
       bg={pageBg}
       sx={{ '& svg': { shapeRendering: 'geometricPrecision' } }}
     >
-      <HStack spacing={4} mb={1} justify="center" flexWrap="wrap">
+      <HStack spacing={4} mb={0} justify="center" flexWrap="wrap">
         <HStack spacing={2} align="center">
           <Box w={3} h={3} borderRadius="sm" bg={BLUE_FILL} flexShrink={0} />
           <Text fontSize="sm" fontWeight={500} color={legendColor}>
