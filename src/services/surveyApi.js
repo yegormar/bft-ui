@@ -38,6 +38,16 @@ export async function submitAnswers(sessionId, answers) {
   return request('POST', `/sessions/${sessionId}/assessment/answers`, { answers });
 }
 
+/**
+ * Replace all answers for a session (e.g. after user changed one or more on "Your answers" page).
+ * Rebuilds coverage and dimension scores on the server.
+ * @param {string} sessionId
+ * @param {{ answers: Array<{ questionId: string, value: string | string[] }> }} payload
+ */
+export async function replaceAnswers(sessionId, payload) {
+  return request('PUT', `/sessions/${sessionId}/assessment/answers`, payload);
+}
+
 export async function getNextQuestion(sessionId) {
   return request('GET', `/sessions/${sessionId}/assessment/next`);
 }

@@ -3,31 +3,83 @@ import {
   Button,
   Container,
   Heading,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
   Spinner,
   Text,
   VStack,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
-import { getAssessment } from '../../services/surveyApi';
+import PreSurveyQuestion from '../Discovery/PreSurveyQuestion';
+import { getAssessment, replaceAnswers } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
 function formatAnswer(question, userAnswer) {
   if (userAnswer == null || userAnswer === '') return 'No answer';
   if (Array.isArray(userAnswer)) {
-    return userAnswer.map((v, i) => `${i + 1}. ${String(v)}`).join(', ');
+    return userAnswer
+      .map((v, i) => {
+        const opt = question?.options?.find((o) => o.value === v || o.text === v);
+        return `${i + 1}. ${opt ? opt.text : String(v)}`;
+      })
+      .join(', ');
   }
   const opt = question?.options?.find((o) => o.value === userAnswer || o.text === userAnswer);
   return opt ? (opt.text || String(userAnswer)) : String(userAnswer);
 }
 
+/** Convert stored value (API format) to what PreSurveyQuestion expects (text for single/multi, values for rank). */
+function toDisplayValue(item, rawValue) {
+  if (item.type === 'rank') return Array.isArray(rawValue) ? rawValue : [];
+  if (item.type === 'multi_choice' && Array.isArray(rawValue)) {
+    return rawValue.map((v) => {
+      const opt = item.options?.find((o) => o.value === v);
+      return opt ? opt.text : String(v);
+    });
+  }
+  const opt = item.options?.find((o) => o.value === rawValue);
+  return opt ? opt.text : (rawValue != null ? String(rawValue) : '');
+}
+
+/** Convert PreSurveyQuestion output back to API format (value or array of values). */
+function fromDisplayValue(item, displayValue) {
+  if (item.type === 'rank') return Array.isArray(displayValue) ? displayValue : [];
+  if (item.type === 'multi_choice' && Array.isArray(displayValue)) {
+    return displayValue.map((t) => {
+      const opt = item.options?.find((o) => o.text === t);
+      return opt ? opt.value : t;
+    });
+  }
+  const opt = item.options?.find((o) => o.text === displayValue);
+  return opt ? opt.value : (displayValue != null ? String(displayValue) : '');
+}
+
+function canProceed(item, value) {
+  if (item?.type === 'single_choice') return value != null && value !== '';
+  if (item?.type === 'multi_choice') return Array.isArray(value) && value.length > 0;
+  if (item?.type === 'rank') return Array.isArray(value) && value.length === (item.options?.length ?? 0);
+  return false;
+}
+
 export default function ResultsAnswersPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  /** Local overrides: questionId -> value (API format: string or array). */
+  const [localOverrides, setLocalOverrides] = useState({});
+  /** Modal: which item is being edited and draft display value. */
+  const [editModal, setEditModal] = useState({ open: false, item: null, draftValue: null });
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcError, setRecalcError] = useState(null);
 
   const resolvedSessionId =
     location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
@@ -53,6 +105,48 @@ export default function ResultsAnswersPage() {
       setLoading(false);
     }
   }, [resolvedSessionId, fetchAssessment]);
+
+  const openChangeAnswer = (item) => {
+    const raw = localOverrides[item.questionId] ?? item.userAnswer;
+    setEditModal({
+      open: true,
+      item,
+      draftValue: toDisplayValue(item, raw),
+    });
+  };
+
+  const closeChangeAnswer = () => {
+    setEditModal({ open: false, item: null, draftValue: null });
+  };
+
+  const saveChangeAnswer = () => {
+    if (!editModal.item) return;
+    const apiValue = fromDisplayValue(editModal.item, editModal.draftValue);
+    setLocalOverrides((prev) => ({ ...prev, [editModal.item.questionId]: apiValue }));
+    closeChangeAnswer();
+  };
+
+  const hasAnyOverride = Object.keys(localOverrides).length > 0;
+
+  const handleRecalculate = async () => {
+    if (!resolvedSessionId || !hasAnyOverride) return;
+    setRecalculating(true);
+    setRecalcError(null);
+    try {
+      const asked = assessment?.askedQuestionsWithAnswers ?? [];
+      const answers = asked.map((item) => ({
+        questionId: item.questionId,
+        value: localOverrides[item.questionId] ?? item.userAnswer,
+      }));
+      await replaceAnswers(resolvedSessionId, { answers });
+      sessionStorage.setItem(RESULTS_SESSION_KEY, resolvedSessionId);
+      navigate('/results', { state: { sessionId: resolvedSessionId } });
+    } catch (err) {
+      setRecalcError(err.message || 'Failed to recalculate. Try again.');
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   if (!resolvedSessionId) {
     return (
@@ -134,8 +228,9 @@ export default function ResultsAnswersPage() {
               _dark={{ bg: 'whiteAlpha.50' }}
             >
               <Text fontSize="sm" color="chakra-subtle-text" mb={2}>
-                To change an answer and recalculate your results, start a new discovery. Your new
-                answers will produce updated skills, traits, and career directions.
+                No test is perfect, but that is why you can keep doing new tests again and again to
+                see emerging patterns. Tests are different each time; use the button below to start
+                over.
               </Text>
               <Button
                 as={RouterLink}
@@ -143,7 +238,7 @@ export default function ResultsAnswersPage() {
                 colorScheme="brand"
                 size="md"
               >
-                Change answers and recalculate
+                Start over
               </Button>
             </Box>
             {hasContent ? (
@@ -151,31 +246,70 @@ export default function ResultsAnswersPage() {
                 <Heading size="sm" color="chakra-subtle-text">
                   Asked questions and your choices ({asked.length})
                 </Heading>
-                {asked.map((item, i) => (
-                  <Box
-                    key={item.questionId ?? i}
-                    p={4}
-                    borderWidth="1px"
-                    borderRadius="md"
-                    borderColor="chakra-border-color"
-                    bg="white"
-                    _dark={{ bg: 'whiteAlpha.100' }}
-                  >
-                    {item.title && (
-                      <Text fontWeight="semibold" fontSize="sm" mb={2}>
-                        {item.title}
-                      </Text>
-                    )}
-                    {item.description && (
-                      <Text fontSize="xs" color="chakra-subtle-text" mb={2}>
-                        {item.description}
-                      </Text>
-                    )}
-                    <Text fontSize="sm" color="chakra-subtle-text">
-                      You chose: {formatAnswer(item, item.userAnswer)}
+                {asked.map((item, i) => {
+                  const effectiveAnswer = localOverrides[item.questionId] ?? item.userAnswer;
+                  const isUpdated = item.questionId in localOverrides;
+                  return (
+                    <Box
+                      key={item.questionId ?? i}
+                      p={4}
+                      borderWidth="1px"
+                      borderRadius="md"
+                      borderColor="chakra-border-color"
+                      bg="white"
+                      _dark={{ bg: 'whiteAlpha.100' }}
+                    >
+                      {item.title && (
+                        <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                          {item.title}
+                        </Text>
+                      )}
+                      {item.description && (
+                        <Text fontSize="xs" color="chakra-subtle-text" mb={2}>
+                          {item.description}
+                        </Text>
+                      )}
+                      <Box display="flex" flexWrap="wrap" alignItems="center" gap={2}>
+                        <Text fontSize="sm" color="chakra-subtle-text">
+                          You chose: {formatAnswer(item, effectiveAnswer)}
+                          {isUpdated && (
+                            <Text as="span" ml={2} fontSize="xs" color="accent">
+                              (updated)
+                            </Text>
+                          )}
+                        </Text>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="brand"
+                          onClick={() => openChangeAnswer(item)}
+                          data-testid={`change-answer-${i}`}
+                        >
+                          Change answer
+                        </Button>
+                      </Box>
+                    </Box>
+                  );
+                })}
+                <Box pt={4} w="full">
+                  {recalcError && (
+                    <Text fontSize="sm" color="red.500" mb={2}>
+                      {recalcError}
                     </Text>
-                  </Box>
-                ))}
+                  )}
+                  <Button
+                    colorScheme="brand"
+                    size="lg"
+                    minH="44px"
+                    isDisabled={!hasAnyOverride}
+                    isLoading={recalculating}
+                    loadingText="Recalculating..."
+                    onClick={handleRecalculate}
+                    data-testid="recalculate-results"
+                  >
+                    Recalculate results
+                  </Button>
+                </Box>
               </VStack>
             ) : (
               <Text color="chakra-subtle-text">No answers yet. Complete a discovery first.</Text>
@@ -183,6 +317,43 @@ export default function ResultsAnswersPage() {
           </VStack>
         </Container>
       </Box>
+
+      <Modal isOpen={editModal.open} onClose={closeChangeAnswer} size="xl" scrollBehavior="inside">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Change your answer</ModalHeader>
+          <ModalBody>
+            {editModal.item && (
+              <PreSurveyQuestion
+                question={{
+                  id: editModal.item.questionId,
+                  title: editModal.item.title,
+                  description: editModal.item.description,
+                  type: editModal.item.type || 'single_choice',
+                  options: editModal.item.options ?? [],
+                }}
+                value={editModal.draftValue}
+                onChange={(v) => setEditModal((prev) => ({ ...prev, draftValue: v }))}
+                optional={false}
+                maxSelections={editModal.item.maxSelections}
+              />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={closeChangeAnswer}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="brand"
+              onClick={saveChangeAnswer}
+              isDisabled={!editModal.item || !canProceed(editModal.item, editModal.draftValue)}
+              data-testid="change-answer-save"
+            >
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 }
