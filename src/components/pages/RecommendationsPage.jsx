@@ -6,6 +6,7 @@ import {
   HStack,
   Menu,
   MenuButton,
+  MenuDivider,
   MenuItem,
   MenuList,
   Modal,
@@ -18,12 +19,14 @@ import {
   Spinner,
   Text,
   UnorderedList,
+  useBreakpointValue,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
+import { SkillDetailsContent } from '../SkillDetailsContent';
 import { getReport, getOccupationsBySkillIds, getOccupationByNocCode } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
@@ -35,27 +38,147 @@ const BUCKET_LABELS = {
   high: 'High time investment',
 };
 
+const SHORT_DESC_LENGTH = 220;
+
+/** First paragraph or first N characters for shortened description. */
+function shortDescription(description) {
+  if (!description || typeof description !== 'string') return { short: '', hasMore: false };
+  const trimmed = description.trim();
+  const firstPara = trimmed.split(/\n\n+/)[0];
+  if (firstPara.length <= SHORT_DESC_LENGTH) {
+    return { short: firstPara, hasMore: trimmed.length > firstPara.length };
+  }
+  return {
+    short: firstPara.slice(0, SHORT_DESC_LENGTH).trim() + '…',
+    hasMore: true,
+  };
+}
+
+function skillMatchDisplay(applicability, maxApplicability) {
+  if (applicability == null || maxApplicability == null || maxApplicability <= 0) return { text: '-', band: null };
+  const ratio = Math.min(1, applicability / maxApplicability);
+  const score = 1 + ratio * 4;
+  const text = `${(Math.round(score * 10) / 10).toFixed(1)}/5`;
+  let band = null;
+  if (score >= 4.2) band = 'Very High';
+  else if (score >= 3.4) band = 'High';
+  else if (score >= 2.6) band = 'Medium';
+  else if (score >= 1.8) band = 'Low';
+  else band = 'Very Low';
+  return { text, band };
+}
+
+function SkillDefinitionContent({
+  skill,
+  maxApplicability,
+  expanded,
+  onShowMore,
+  structuralDimensionMeta,
+}) {
+  const sectionProps = {
+    p: 4,
+    borderRadius: 'lg',
+    borderWidth: '1px',
+    borderColor: 'chakra-border-color',
+    borderLeftWidth: '4px',
+    borderLeftColor: 'accent',
+    bg: 'blackAlpha.30',
+    _dark: { bg: 'whiteAlpha.50' },
+  };
+  const match = skillMatchDisplay(skill.applicability, maxApplicability);
+  const label = (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
+  const { short: shortDesc, hasMore } = shortDescription(skill.description);
+  const hasExtraSections = !!(skill.ai_future_rationale || skill.how_measured_or_observed || (Array.isArray(skill.question_hints) && skill.question_hints.length > 0) || (skill.structural_scores && Object.keys(skill.structural_scores).length > 0));
+  const showMoreLink = hasMore || hasExtraSections;
+
+  if (expanded) {
+    return (
+      <VStack align="stretch" spacing={4}>
+        <SkillDetailsContent
+          skill={skill}
+          maxApplicability={maxApplicability}
+          structuralDimensionMeta={structuralDimensionMeta ?? []}
+        />
+        <Button
+          variant="link"
+          size="sm"
+          color="accent"
+          _hover={{ textDecoration: 'underline' }}
+          onClick={onShowMore}
+        >
+          Less
+        </Button>
+      </VStack>
+    );
+  }
+
+  return (
+    <VStack align="stretch" spacing={4}>
+      {(shortDesc || skill.description) && (
+        <Box {...sectionProps}>
+          <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
+            Definition
+          </Text>
+          <Text fontSize="sm" lineHeight="tall" color="chakra-body-text">
+            {shortDesc || skill.description}
+          </Text>
+        </Box>
+      )}
+      <Box {...sectionProps}>
+        <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
+          Your match
+        </Text>
+        <Text fontSize="sm" color="chakra-body-text">
+          {match.text}
+          {match.band && (
+            <Text as="span" color="chakra-subtle-text">
+              {' '}({match.band})
+            </Text>
+          )}
+        </Text>
+      </Box>
+      {!shortDesc && !skill.description && (
+        <Text fontSize="sm" color="chakra-subtle-text">
+          No definition available for {label}.
+        </Text>
+      )}
+      {showMoreLink && (
+        <Box>
+          <Button
+            variant="link"
+            size="sm"
+            color="accent"
+            _hover={{ textDecoration: 'underline' }}
+            onClick={onShowMore}
+          >
+            More
+          </Button>
+        </Box>
+      )}
+    </VStack>
+  );
+}
+
+// All tiles use PageHero background; only the top indicator shows compatibility (red / yellow / green).
+// _dark: explicit color so tile title stays visible; only side/bottom border so top indicator is not overwritten.
 function getSkillTileColor(applicability, maxApplicability) {
+  const base = {
+    bg: 'hero-bg',
+    color: 'hero-title',
+    _dark: {
+      color: 'brand.200',
+      borderLeftColor: 'hero-border',
+      borderRightColor: 'hero-border',
+      borderBottomColor: 'hero-border',
+    },
+  };
   if (maxApplicability == null || maxApplicability <= 0) {
-    return { bg: 'gray.200', color: 'gray.700', _dark: { bg: 'whiteAlpha.200', color: 'gray.300' } };
+    return { ...base, topIndicatorColor: 'red.500' };
   }
   const ratio = Math.min(1, (applicability ?? 0) / maxApplicability);
-  let bg;
-  let color = 'gray.800';
-  if (ratio <= 1 / 3) {
-    const t = ratio / (1 / 3);
-    bg = t < 0.5 ? 'red.300' : t < 0.85 ? 'red.500' : 'red.600';
-    color = t < 0.5 ? 'gray.800' : 'white';
-  } else if (ratio <= 2 / 3) {
-    const t = (ratio - 1 / 3) / (1 / 3);
-    bg = t < 0.5 ? 'yellow.300' : t < 0.85 ? 'yellow.500' : 'yellow.600';
-    color = t >= 0.5 ? 'gray.800' : 'gray.800';
-  } else {
-    const t = (ratio - 2 / 3) / (1 / 3);
-    bg = t < 0.5 ? 'green.300' : t < 0.85 ? 'green.500' : 'green.600';
-    color = t >= 0.5 ? 'white' : 'gray.800';
-  }
-  return { bg, color };
+  const topIndicatorColor =
+    ratio <= 1 / 3 ? 'red.500' : ratio <= 2 / 3 ? 'yellow.500' : 'green.500';
+  return { ...base, topIndicatorColor };
 }
 
 function OccupationDetailContent({ occupation }) {
@@ -151,9 +274,17 @@ export default function RecommendationsPage() {
   const [occupationDetail, setOccupationDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const { isOpen: isSkillDefOpen, onOpen: onSkillDefOpen, onClose: onSkillDefClose } = useDisclosure();
+  const [skillForDefinition, setSkillForDefinition] = useState(null);
+  const [skillDefExpanded, setSkillDefExpanded] = useState(false);
 
   const [pool, setPool] = useState([]);
   const [buckets, setBuckets] = useState({ low: [], medium: [], high: [] });
+
+  const bucketDisplayOrder = useBreakpointValue({
+    base: ['high', 'medium', 'low'],
+    md: ['low', 'medium', 'high'],
+  }) ?? BUCKET_KEYS;
 
   const isTouchDevice = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -170,8 +301,20 @@ export default function RecommendationsPage() {
       const data = await getReport(sid);
       setReport(data);
       const skills = data?.skillDevelopmentRoadmap ?? [];
-      setPool(skills.map((s) => ({ ...s })));
-      setBuckets({ low: [], medium: [], high: [] });
+      const maxApp = skills.length ? Math.max(...skills.map((s) => s.applicability ?? 0), 0) : 0;
+      const highBucket = [];
+      const poolList = [];
+      skills.forEach((s) => {
+        const copy = { ...s };
+        const ratio = maxApp > 0 ? (s.applicability ?? 0) / maxApp : 0;
+        if (ratio > 2 / 3) {
+          highBucket.push(copy);
+        } else {
+          poolList.push(copy);
+        }
+      });
+      setPool(poolList);
+      setBuckets({ low: [], medium: [], high: highBucket });
     } catch (err) {
       setError(err.message || 'We couldn\'t load your careers. Try again or start a new discovery.');
       setReport(null);
@@ -306,21 +449,39 @@ export default function RecommendationsPage() {
     moveSkill(skill, source, toBucket);
   }, [moveSkill]);
 
+  const openSkillDefinition = useCallback((skill) => {
+    setSkillForDefinition(skill);
+    setSkillDefExpanded(false);
+    onSkillDefOpen();
+  }, [onSkillDefOpen]);
+
+  const closeSkillDefinition = useCallback(() => {
+    onSkillDefClose();
+    setSkillForDefinition(null);
+    setSkillDefExpanded(false);
+  }, [onSkillDefClose]);
+
   const renderSkillTile = useCallback((skill, source) => {
     const colorScheme = getSkillTileColor(skill.applicability, maxApplicability);
     const label = (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
     const fromPool = source === 'pool';
     return (
-      <Menu key={skill.id} placement="bottom-start" isLazy>
+      <Box key={skill.id} flex="0 0 calc(50% - 4px)" minW={0}>
+        <Menu placement="bottom-start" isLazy>
         <MenuButton
           as={Box}
           draggable={!isTouchDevice}
           onDragStart={!isTouchDevice ? (e) => handleDragStart(e, skill, source) : undefined}
+          w="100%"
+          minW={0}
+          h="9"
           px={3}
           py={2}
           borderRadius="md"
           borderWidth="1px"
           borderColor="chakra-border-color"
+          borderTopWidth="3px"
+          borderTopColor={colorScheme.topIndicatorColor}
           bg={colorScheme.bg}
           color={colorScheme.color}
           fontSize="sm"
@@ -331,6 +492,10 @@ export default function RecommendationsPage() {
           _active={isTouchDevice ? undefined : { cursor: 'grabbing' }}
           _dark={colorScheme._dark}
           sx={{ touchAction: 'manipulation' }}
+          overflow="hidden"
+          textOverflow="ellipsis"
+          whiteSpace="nowrap"
+          title={label}
         >
           {label}
         </MenuButton>
@@ -350,10 +515,21 @@ export default function RecommendationsPage() {
               {!fromPool && source === key ? ' (current)' : ''}
             </MenuItem>
           ))}
+          <MenuDivider />
+          <MenuItem
+            onClick={() => openSkillDefinition(skill)}
+            as="button"
+            color="accent"
+            fontWeight="medium"
+            _hover={{ textDecoration: 'underline', bg: 'transparent' }}
+          >
+            View definition
+          </MenuItem>
         </MenuList>
       </Menu>
+      </Box>
     );
-  }, [maxApplicability, handleDragStart, handleMoveTo, isTouchDevice]);
+  }, [maxApplicability, handleDragStart, handleMoveTo, openSkillDefinition, isTouchDevice]);
 
   const renderBucket = useCallback((bucketKey) => {
     const list = buckets[bucketKey] || [];
@@ -479,7 +655,7 @@ export default function RecommendationsPage() {
                 ← Back to results
               </Button>
               <Text color="chakra-subtle-text" fontSize="sm">
-                Tap or drag skills into time-investment buckets. Careers below match the skills you assign. Green = strong fit, yellow = medium, red = low fit to your profile.
+                Tap or drag skills into time-investment buckets. Careers below match the skills you assign. Top bar: green = strong fit, yellow = medium, red = low fit to your profile.
               </Text>
             </Box>
 
@@ -492,6 +668,8 @@ export default function RecommendationsPage() {
                 flexWrap="wrap"
                 gap={2}
                 minH="60px"
+                maxH={{ base: '11rem', md: 'none' }}
+                overflowY={{ base: 'auto', md: 'visible' }}
                 p={3}
                 borderRadius="lg"
                 borderWidth="1px"
@@ -509,7 +687,7 @@ export default function RecommendationsPage() {
                 Time investment
               </Heading>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                {BUCKET_KEYS.map((key) => (
+                {bucketDisplayOrder.map((key) => (
                   <Box key={key}>{renderBucket(key)}</Box>
                 ))}
               </SimpleGrid>
@@ -604,6 +782,45 @@ export default function RecommendationsPage() {
               <Spinner size="lg" />
             ) : (
               <OccupationDetailContent occupation={occupationDetail} />
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isSkillDefOpen} onClose={closeSkillDefinition} size="md" scrollBehavior="inside">
+        <ModalOverlay bg="blackAlpha.600" _dark={{ bg: 'blackAlpha.700' }} />
+        <ModalContent
+          maxH="90vh"
+          bg="chakra-body-bg"
+          borderWidth="1px"
+          borderColor="chakra-border-color"
+          borderRadius="xl"
+          boxShadow="xl"
+        >
+          <ModalHeader
+            borderBottomWidth="1px"
+            borderColor="chakra-border-color"
+            pb={4}
+            bg="blackAlpha.20"
+            _dark={{ bg: 'whiteAlpha.50' }}
+            borderTopRadius="xl"
+          >
+            {skillForDefinition && (
+              (skillForDefinition.short_label && skillForDefinition.short_label.trim())
+                ? skillForDefinition.short_label.trim()
+                : skillForDefinition.name
+            )}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6} pt={4} bg="chakra-body-bg">
+            {skillForDefinition && (
+              <SkillDefinitionContent
+                skill={skillForDefinition}
+                maxApplicability={maxApplicability}
+                expanded={skillDefExpanded}
+                onShowMore={() => setSkillDefExpanded((e) => !e)}
+                structuralDimensionMeta={report?.structuralDimensionMeta}
+              />
             )}
           </ModalBody>
         </ModalContent>
