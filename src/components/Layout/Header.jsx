@@ -109,8 +109,8 @@ function Header() {
               <MenuItem {...menuLinkProps('/results')} data-testid="menu-results">
                 Results
               </MenuItem>
-              <MenuItem {...menuLinkProps('/recommendations')} data-testid="menu-careers">
-                Careers
+              <MenuItem {...menuLinkProps('/feedback')} data-testid="menu-feedback">
+                Feedback
               </MenuItem>
               <MenuItem {...menuLinkProps('/about')} data-testid="menu-about">
                 About

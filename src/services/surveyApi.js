@@ -48,10 +48,49 @@ export async function getAssessment(sessionId) {
 
 /**
  * Get report. By default returns core only (dimensions, skills; no LLM).
- * Pass { includeLlm: true } for profile summary and recommendations (triggers LLM).
+ * Pass { includeLlm: true } for profile summary (triggers LLM). Careers use core report + occupations API.
  */
 export async function getReport(sessionId, options = {}) {
   const includeFull = options.includeLlm === true;
-  const path = includeFull ? `/sessions/${sessionId}/report?include=full` : `/sessions/${sessionId}/report`;
-  return request('GET', path);
+  const reportPath = includeFull ? `/sessions/${sessionId}/report?include=full` : `/sessions/${sessionId}/report`;
+  return request('GET', reportPath);
+}
+
+/**
+ * Get occupations scored by selected skill IDs.
+ * With groupByCategory true, returns { groups: [ { categoryKey, categoryLabel, occupations } ] }.
+ * Otherwise returns flat [{ nocCode, name, matchScore, categoryKey, categoryLabel }].
+ */
+export async function getOccupationsBySkillIds(skillIds, groupByCategory = true) {
+  if (!Array.isArray(skillIds) || skillIds.length === 0) {
+    return groupByCategory ? { groups: [] } : [];
+  }
+  const q = new URLSearchParams();
+  skillIds.forEach((id) => q.append('skillIds', id));
+  if (groupByCategory) q.set('groupBy', 'category');
+  return request('GET', `/occupations?${q.toString()}`);
+}
+
+/**
+ * Get full occupation by NOC code (for detail modal).
+ */
+export async function getOccupationByNocCode(nocCode) {
+  if (!nocCode) throw new Error('nocCode is required');
+  return request('GET', `/occupations/${encodeURIComponent(nocCode)}`);
+}
+
+/**
+ * Submit user feedback (rating 1-5, optional improve/good text).
+ * Marks feedback as submitted in localStorage so the results-page pulse stops.
+ */
+export async function submitFeedback(payload) {
+  const { rating, improve, good } = payload ?? {};
+  if (rating == null || rating < 1 || rating > 5) {
+    throw new Error('Rating must be 1 to 5');
+  }
+  return request('POST', '/feedback', {
+    rating: Number(rating),
+    improve: improve && String(improve).trim() || undefined,
+    good: good && String(good).trim() || undefined,
+  });
 }

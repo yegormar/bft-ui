@@ -4,6 +4,7 @@ import {
   Container,
   Flex,
   Heading,
+  Link,
   SimpleGrid,
   Text,
   VStack,
@@ -13,16 +14,16 @@ import { Link as RouterLink } from 'react-router-dom';
 
 const reframing = [
   { old: 'What job should I choose?', new: 'What capabilities should I build?' },
-  { old: 'What major is safe?', new: 'What skill stack is durable?' },
-  { old: 'What if AI replaces me?', new: 'How do I become complementary to AI?' },
-  { old: 'What is my passion?', new: 'Where do my strengths compound over time?' },
+  { old: 'What major is safe?', new: 'What skills will still matter in 10 years?' },
+  { old: 'What if AI replaces me?', new: 'How do I stay useful as work changes?' },
+  { old: 'What is my passion?', new: 'Where do my strengths add up over time?' },
 ];
 
 const trustItems = [
-  { title: 'No registration required', text: 'Start right away; no sign-up.', icon: CircleCheck },
+  { title: 'No sign-up', text: 'Jump in. No account, no email.', icon: CircleCheck },
   {
-    title: 'Anonymous & a school project',
-    text: "We don't sell your data; we only use simple counts to improve the tool.",
+    title: 'Private and free',
+    text: "We're a school project. We don't sell your data. We only use simple counts to improve the tool.",
     icon: ShieldCheck,
   },
 ];
@@ -33,27 +34,41 @@ function HomePage() {
   return (
     <Box as="main" data-testid="page-home" bg="chakra-subtle-bg">
       {/* Hero: tint aligns with brand colorScheme */}
-      <Box bg="hero-bg" py={12} px={4} borderBottomWidth="1px" borderColor="hero-border">
+      <Box
+        as="section"
+        bg="hero-bg"
+        py={{ base: 6, md: 12 }}
+        px={4}
+        borderBottomWidth="1px"
+        borderColor="hero-border"
+        aria-labelledby="home-hero-title"
+      >
         <Container maxW={CONTENT_MAX_W} centerContent>
-          <VStack spacing={4} textAlign="center">
-            <Heading as="h1" size="2xl" fontWeight="extrabold" color="hero-title" data-testid="home-hero-title">
+          <VStack spacing={{ base: 3, md: 4 }} textAlign="center">
+            <Heading
+              id="home-hero-title"
+              as="h1"
+              size={{ base: 'xl', md: '2xl' }}
+              fontWeight="extrabold"
+              color="hero-title"
+              data-testid="home-hero-title"
+            >
               Built for Tomorrow
             </Heading>
-            <Text fontSize="xl" color="hero-tagline" fontWeight="semibold" data-testid="home-hero-tagline">
-              Do not panic. Find your strengths. You can do this.
+            <Text fontSize={{ base: 'md', md: 'xl' }} color="hero-tagline" fontWeight="semibold" data-testid="home-hero-tagline">
+              Find your strengths. See where they take you.
             </Text>
-            <Text fontSize="md" color="chakra-subtle-text" maxW="2xl">
-              An AI-powered guided interview for students and young adults facing uncertainty about college,
-              careers, and the future of work. We help you understand your strengths and build a
-              realistic direction, not a single “correct” path.
+            <Text fontSize={{ base: 'sm', md: 'md' }} color="chakra-subtle-text" maxW="2xl" lineHeight="tall">
+              Discover your strengths, explore professions and skills, and see where to invest your time. No sign-up. No one right path.
             </Text>
             <Button
               as={RouterLink}
               to="/discovery"
               colorScheme="brand"
-              size="lg"
+              size={{ base: 'md', md: 'lg' }}
               mt={2}
-              px={8}
+              px={{ base: 6, md: 8 }}
+              aria-label="Start your discovery journey"
               data-testid="home-start-discovery"
             >
               Start discovery
@@ -63,23 +78,32 @@ function HomePage() {
       </Box>
 
       {/* The shift: main content section */}
-      <Box py={12} px={4} bg="chakra-body-bg">
+      <Box
+        as="section"
+        py={{ base: 8, md: 12 }}
+        px={4}
+        bg="chakra-body-bg"
+        aria-labelledby="home-reframe-title"
+      >
         <Container maxW={CONTENT_MAX_W}>
           <Heading
+            id="home-reframe-title"
             as="h2"
-            size="lg"
-            mb={8}
+            size={{ base: 'md', md: 'lg' }}
+            mb={{ base: 5, md: 8 }}
             textAlign="center"
             color="chakra-body-text"
             data-testid="home-reframe-title"
           >
-            The shift we help you make
+            The shift you can make
           </Heading>
-          <VStack spacing={5} align="stretch">
+          <VStack as="ul" spacing={{ base: 4, md: 5 }} align="stretch" listStyleType="none" role="list">
             {reframing.map(({ old: oldQ, new: newQ }) => (
               <Box
+                as="li"
                 key={oldQ}
-                p={5}
+                role="listitem"
+                p={{ base: 4, md: 5 }}
                 bg="chakra-body-bg"
                 borderRadius="lg"
                 borderWidth="1px"
@@ -94,18 +118,19 @@ function HomePage() {
                 <Text fontSize="sm" color="chakra-subtle-text" mb={2}>
                   From: {oldQ}
                 </Text>
-                <Text fontWeight="medium" color="chakra-body-text" fontSize="md">
+                <Text fontWeight="medium" color="chakra-body-text" fontSize={{ base: 'sm', md: 'md' }}>
                   To: {newQ}
                 </Text>
               </Box>
             ))}
           </VStack>
-          <Box textAlign="center" mt={8}>
+          <Box textAlign="center" mt={{ base: 6, md: 8 }}>
             <Button
               as={RouterLink}
               to="/discovery"
               colorScheme="brand"
               size="md"
+              aria-label="Start your discovery"
               data-testid="home-start-discovery-secondary"
             >
               Start discovery
@@ -114,66 +139,83 @@ function HomePage() {
         </Container>
       </Box>
 
-      {/* Privacy + Feedback: one box, minimal vertical space */}
-      <Box py={6} px={4} bg="chakra-subtle-bg" borderTopWidth="1px" borderColor="chakra-border-color">
+      {/* Privacy */}
+      <Box
+        as="section"
+        py={{ base: 5, md: 6 }}
+        px={4}
+        bg="chakra-subtle-bg"
+        borderTopWidth="1px"
+        borderColor="chakra-border-color"
+        aria-labelledby="home-privacy-title"
+      >
         <Container maxW={CONTENT_MAX_W}>
-          <VStack spacing={5} align="stretch">
-            <Box>
-              <Heading
-                as="h2"
-                size="md"
-                mb={3}
-                textAlign="center"
-                color="chakra-body-text"
-                fontWeight="semibold"
-                data-testid="home-privacy-title"
+          <Heading
+            id="home-privacy-title"
+            as="h2"
+            size={{ base: 'sm', md: 'md' }}
+            mb={3}
+            textAlign="center"
+            color="chakra-body-text"
+            fontWeight="semibold"
+            data-testid="home-privacy-title"
+          >
+            Your privacy matters
+          </Heading>
+          <Flex direction={{ base: 'column', sm: 'row' }} gap={3} justify="center" flexWrap="wrap">
+            {trustItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.title}
+                  as="div"
+                  size="sm"
+                  variant="outline"
+                  colorScheme="gray"
+                  leftIcon={<Box as="span" color="accent" lineHeight={0}><Icon size={18} strokeWidth={2} aria-hidden /></Box>}
+                  cursor="default"
+                  _hover={{ bg: 'chakra-subtle-bg' }}
+                  data-testid={`home-trust-item-${item.title.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and')}`}
+                >
+                  {item.title}
+                </Button>
+              );
+            })}
+          </Flex>
+          <Text fontSize="xs" color="chakra-subtle-text" textAlign="center" mt={3}>
+            No account required. We don't sell your data.
+          </Text>
+        </Container>
+      </Box>
+
+      {/* Feedback & support */}
+      <Box
+        as="section"
+        py={{ base: 5, md: 6 }}
+        px={4}
+        bg="chakra-subtle-bg"
+        borderTopWidth="1px"
+        borderColor="chakra-border-color"
+        aria-labelledby="home-support-title"
+      >
+        <Container maxW={CONTENT_MAX_W}>
+          <Box textAlign="center">
+            <Heading id="home-support-title" as="h2" size="sm" mb={1} color="chakra-body-text" fontWeight="semibold" data-testid="home-support-title">
+              <Link
+                as={RouterLink}
+                to="/feedback"
+                color="accent"
+                textDecoration="underline"
+                _hover={{ opacity: 0.85 }}
+                data-testid="home-feedback-link"
               >
-                Your privacy matters
-              </Heading>
-              <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} w="100%">
-                {trustItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Flex
-                      key={item.title}
-                      align="flex-start"
-                      gap={2}
-                      py={0}
-                      data-testid="home-trust-item"
-                    >
-                      <Box flexShrink={0} mt={0.5} color="accent" lineHeight={0}>
-                        <Icon size={20} strokeWidth={2} />
-                      </Box>
-                      <Box>
-                        <Text
-                          fontWeight="bold"
-                          fontSize="xs"
-                          color="chakra-body-text"
-                          mb={0}
-                          textTransform="uppercase"
-                          letterSpacing="wider"
-                          data-testid="home-trust-item-title"
-                        >
-                          {item.title}
-                        </Text>
-                        <Text fontSize="xs" color="chakra-subtle-text" lineHeight="tall">
-                          {item.text}
-                        </Text>
-                      </Box>
-                    </Flex>
-                  );
-                })}
-              </SimpleGrid>
-            </Box>
-            <Box textAlign="center">
-              <Heading as="h2" size="sm" mb={1} color="chakra-body-text" fontWeight="semibold">
                 Feedback & support
-              </Heading>
-              <Text fontSize="sm" color="chakra-subtle-text" data-testid="home-support-title">
-                Built for Tomorrow is free. For bugs, feature ideas, or constructive feedback, reach out.
-              </Text>
-            </Box>
-          </VStack>
+              </Link>
+            </Heading>
+            <Text fontSize="sm" color="chakra-subtle-text">
+              Built for Tomorrow is free. Got a bug, an idea, or feedback? We're listening.
+            </Text>
+          </Box>
         </Container>
       </Box>
     </Box>

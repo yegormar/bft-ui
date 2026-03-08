@@ -10,6 +10,7 @@ import ResultsTraitsValuesPage from './components/pages/ResultsTraitsValuesPage'
 import ResultsAnswersPage from './components/pages/ResultsAnswersPage';
 import RecommendationsPage from './components/pages/RecommendationsPage';
 import SkillsPage from './components/pages/SkillsPage';
+import FeedbackPage from './components/pages/FeedbackPage';
 import NotFoundPage from './components/pages/NotFoundPage';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
         <Route path="/results/answers" element={<ResultsAnswersPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/skills" element={<SkillsPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

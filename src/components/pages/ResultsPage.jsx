@@ -8,7 +8,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { BarChart3, Briefcase, Heart, ListChecks, Sparkles } from 'lucide-react';
+import { BarChart3, Briefcase, Heart, ListChecks, MessageCircle, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
@@ -44,10 +44,10 @@ const HUB_LINKS = [
   {
     to: '/recommendations',
     stateKey: 'sessionId',
-    title: 'Career option',
-    description: 'Career directions that fit you and directions to avoid.',
+    title: 'Careers',
+    description: 'Explore careers by skills and time investment.',
     icon: Briefcase,
-    requiresLlm: true,
+    requiresLlm: false,
   },
   {
     to: '/results/answers',
@@ -57,9 +57,18 @@ const HUB_LINKS = [
     icon: ListChecks,
     requiresLlm: false,
   },
+  {
+    to: '/feedback',
+    stateKey: null,
+    title: 'Feedback',
+    description: 'Tell us what worked and what we could do better. We really want to hear from you.',
+    icon: MessageCircle,
+    requiresLlm: false,
+    isFeedback: true,
+  },
 ];
 
-function HubButton({ to, state, title, description, icon: Icon, disabled, preparing }) {
+function HubButton({ to, state, title, description, icon: Icon, disabled, preparing, pulse }) {
   const content = (
     <VStack align="stretch" spacing={3} w="full">
       <Box color={disabled ? 'chakra-subtle-text' : 'brand.500'} lineHeight={0}>
@@ -126,6 +135,7 @@ function HubButton({ to, state, title, description, icon: Icon, disabled, prepar
       whiteSpace="normal"
       w="full"
       boxShadow="sm"
+      animation={pulse ? 'gentle-pulse 2.5s ease-in-out infinite' : undefined}
       _hover={{ shadow: 'md', borderColor: 'brand.500', bg: 'blackAlpha.50' }}
       _dark={{ _hover: { bg: 'whiteAlpha.50' } }}
       data-testid={`results-hub-${title.toLowerCase().replace(/\s+/g, '-')}`}
@@ -190,6 +200,9 @@ export default function ResultsPage() {
     sessionStorage.setItem(RESULTS_SESSION_KEY, resolvedSessionId);
   }
 
+  const hasGivenFeedback =
+    typeof localStorage !== 'undefined' && localStorage.getItem('bft_feedback_submitted') === 'true';
+
   return (
     <>
       <PageHero title="Your discovery results" tagline="Explore your strength profile and insights" />
@@ -209,6 +222,7 @@ export default function ResultsPage() {
                 icon={link.icon}
                 disabled={link.requiresLlm && !fullReportReady}
                 preparing={link.requiresLlm && !fullReportReady}
+                pulse={link.isFeedback && !hasGivenFeedback}
               />
             ))}
           </SimpleGrid>
