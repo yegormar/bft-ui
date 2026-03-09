@@ -129,7 +129,7 @@ export default function SkillsPage() {
   if (!resolvedSessionId) {
     return (
       <>
-        <PageHero title="Skills for you" tagline="Skills that match your strengths." />
+        <PageHero title="Skills for you" tagline="Skills to grow that match your aptitudes." />
         <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
           <Container maxW="2xl" centerContent p={0}>
             <Box
@@ -162,7 +162,7 @@ export default function SkillsPage() {
   if (loading) {
     return (
       <>
-        <PageHero title="Skills for you" tagline="Skills that match your strengths." />
+        <PageHero title="Skills for you" tagline="Skills to grow that match your aptitudes." />
         <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
           <Container maxW="2xl" centerContent p={0}>
             <VStack spacing={4}>
@@ -178,7 +178,7 @@ export default function SkillsPage() {
   if (error) {
     return (
       <>
-        <PageHero title="Skills for you" tagline="Skills that match your strengths." />
+        <PageHero title="Skills for you" tagline="Skills to grow that match your aptitudes." />
         <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
           <Container maxW="2xl" centerContent p={0}>
             <Box
@@ -208,7 +208,7 @@ export default function SkillsPage() {
 
   return (
     <>
-      <PageHero title="Skills for you" tagline="Skills that match your strengths." />
+      <PageHero title="Skills for you" tagline="Skills to grow that match your aptitudes." />
       <Box as="main" py={0} px={0} bg="chakra-body-bg" data-testid="page-skills">
         <Container maxW="2xl" p={0}>
           <VStack align="stretch" spacing={{ base: 2, md: 4 }} w="full">
@@ -231,9 +231,9 @@ export default function SkillsPage() {
                 <HStack fontWeight="medium" fontSize="sm" mb={2} color="chakra-subtle-text" spacing={1.5} flexWrap="wrap" align="center" as="p">
                   <Text as="span">You</Text>
                   <Box as="span" w={3} h={3} borderRadius="sm" bg="blue.400" flexShrink={0} />
-                  <Text as="span">vs what'll matter with AI.</Text>
+                  <Text as="span"> vs what'll matter with AI</Text>
                   <Box as="span" w={3} h={3} borderRadius="sm" bg="red.400" flexShrink={0} />
-                  <Text as="span">Further out = better.</Text>
+                  <Text as="span">. Further out = better.</Text>
                 </HStack>
                 <SkillsRadarChart skills={rawSkills} maxApplicability={maxApplicability} />
               </Box>

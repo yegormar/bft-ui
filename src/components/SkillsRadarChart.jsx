@@ -265,7 +265,10 @@ export default function SkillsRadarChart({ skills, maxApplicability }) {
           enableDots
           dotSize={6}
           dotBorderWidth={0}
-          colors={[BLUE_FILL, RED_FILL]}
+          colors={(layer) => {
+            const key = typeof layer === 'string' ? layer : (layer?.id ?? layer?.key);
+            return key === 'Your match' ? BLUE_FILL : RED_FILL;
+          }}
           fillOpacity={0.4}
           blendMode="normal"
           borderColor={{ from: 'color' }}

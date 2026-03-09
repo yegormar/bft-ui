@@ -1,8 +1,9 @@
 import { Box, Button, Container, Progress, Spinner, Text, VStack } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createSession, getNextQuestion, submitAnswers } from '../../services/surveyApi';
 import PreSurveyQuestion from './PreSurveyQuestion';
+import TriangleQuestion from './TriangleQuestion';
 
 function selectionToValue(question, value) {
   if (question.type === 'rank') {
@@ -39,7 +40,9 @@ export default function MainSurvey({ clusterProfile }) {
     } else {
       const q = result.nextQuestion;
       setQuestion(q);
-      if (q.type === 'rank' && Array.isArray(q.options)) {
+      if (q.type === 'triangle') {
+        setValue({ a: 1 / 3, b: 1 / 3, c: 1 / 3 });
+      } else if (q.type === 'rank' && Array.isArray(q.options)) {
         setValue(q.options.map((o) => o.value));
       } else if (q.type === 'multi_choice') {
         setValue([]);
@@ -77,9 +80,18 @@ export default function MainSurvey({ clusterProfile }) {
 
   const handleNext = async () => {
     if (!sessionId || !question) return;
-    const payloadValue = selectionToValue(question, value);
+    const payloadValue =
+      question.type === 'triangle'
+        ? value
+        : selectionToValue(question, value);
     const singleVal =
-      question.type === 'single_choice' ? payloadValue[0] : question.type === 'rank' ? payloadValue : payloadValue;
+      question.type === 'triangle'
+        ? payloadValue
+        : question.type === 'single_choice'
+          ? payloadValue[0]
+          : question.type === 'rank'
+            ? payloadValue
+            : payloadValue;
     setSubmitting(true);
     setError(null);
     setServiceUnavailable(false);
@@ -116,6 +128,15 @@ export default function MainSurvey({ clusterProfile }) {
   };
 
   const canProceed = () => {
+    if (question?.type === 'triangle') {
+      return (
+        value &&
+        typeof value.a === 'number' &&
+        typeof value.b === 'number' &&
+        typeof value.c === 'number' &&
+        Math.abs((value.a + value.b + value.c) - 1) < 0.01
+      );
+    }
     if (question?.type === 'single_choice') return value != null && value !== '';
     if (question?.type === 'multi_choice') return Array.isArray(value) && value.length > 0;
     if (question?.type === 'rank') return Array.isArray(value) && value.length === (question.options?.length ?? 0);
@@ -260,8 +281,9 @@ export default function MainSurvey({ clusterProfile }) {
                 data-testid="interview-progress"
               />
               <Text fontSize="sm" color="chakra-subtle-text" mt={2}>
-                {progress.questionsAsked > 0 && `Question ${progress.questionsAsked} · `}
-                Building your profile: {progress.coveredDimensions}/{progress.totalDimensions} dimensions covered ({progress.percentComplete}%)
+                {question?.type === 'triangle'
+                  ? `Triangle ${progress.questionsAsked} of ${progress.totalDimensions} (${progress.percentComplete}%)`
+                  : `${progress.questionsAsked > 0 ? `Question ${progress.questionsAsked} · ` : ''}Building your profile: ${progress.coveredDimensions}/${progress.totalDimensions} dimensions covered (${progress.percentComplete}%)`}
               </Text>
             </Box>
           )}
@@ -280,13 +302,21 @@ export default function MainSurvey({ clusterProfile }) {
             bg="chakra-body-bg"
             boxShadow="sm"
           >
-            <PreSurveyQuestion
-              question={question}
-              value={value}
-              onChange={setValue}
-              optional={false}
-              maxSelections={maxSelections}
-            />
+            {question.type === 'triangle' ? (
+              <TriangleQuestion
+                question={question}
+                value={value}
+                onChange={setValue}
+              />
+            ) : (
+              <PreSurveyQuestion
+                question={question}
+                value={value}
+                onChange={setValue}
+                optional={false}
+                maxSelections={maxSelections}
+              />
+            )}
             <Box w="full" display="flex" justifyContent="flex-end" mt={4} gap={3}>
               {serviceUnavailable ? (
                 <Button

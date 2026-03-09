@@ -59,10 +59,14 @@ export async function getAssessment(sessionId) {
 /**
  * Get report. By default returns core only (dimensions, skills; no LLM).
  * Pass { includeLlm: true } for profile summary (triggers LLM). Careers use core report + occupations API.
+ * Uses a cache-busting query param so skills/dimension data always reflects current answers.
  */
 export async function getReport(sessionId, options = {}) {
   const includeFull = options.includeLlm === true;
-  const reportPath = includeFull ? `/sessions/${sessionId}/report?include=full` : `/sessions/${sessionId}/report`;
+  const params = new URLSearchParams();
+  if (includeFull) params.set('include', 'full');
+  params.set('_', String(Date.now()));
+  const reportPath = `/sessions/${sessionId}/report?${params.toString()}`;
   return request('GET', reportPath);
 }
 

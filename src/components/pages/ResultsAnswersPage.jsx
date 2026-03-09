@@ -17,12 +17,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import PreSurveyQuestion from '../Discovery/PreSurveyQuestion';
+import TriangleQuestion from '../Discovery/TriangleQuestion';
 import { getAssessment, replaceAnswers } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
 function formatAnswer(question, userAnswer) {
   if (userAnswer == null || userAnswer === '') return 'No answer';
+  if (question?.type === 'triangle' && typeof userAnswer === 'object' && userAnswer.a != null && userAnswer.b != null && userAnswer.c != null) {
+    const a = Math.round((userAnswer.a ?? 0) * 100);
+    const b = Math.round((userAnswer.b ?? 0) * 100);
+    const c = Math.round((userAnswer.c ?? 0) * 100);
+    return `Position: A ${a}%, B ${b}%, C ${c}%`;
+  }
   if (Array.isArray(userAnswer)) {
     return userAnswer
       .map((v, i) => {
@@ -37,6 +44,7 @@ function formatAnswer(question, userAnswer) {
 
 /** Convert stored value (API format) to what PreSurveyQuestion expects (text for single/multi, values for rank). */
 function toDisplayValue(item, rawValue) {
+  if (item.type === 'triangle') return rawValue && typeof rawValue === 'object' ? rawValue : { a: 1 / 3, b: 1 / 3, c: 1 / 3 };
   if (item.type === 'rank') return Array.isArray(rawValue) ? rawValue : [];
   if (item.type === 'multi_choice' && Array.isArray(rawValue)) {
     return rawValue.map((v) => {
@@ -50,6 +58,7 @@ function toDisplayValue(item, rawValue) {
 
 /** Convert PreSurveyQuestion output back to API format (value or array of values). */
 function fromDisplayValue(item, displayValue) {
+  if (item.type === 'triangle') return displayValue && typeof displayValue === 'object' ? displayValue : { a: 1 / 3, b: 1 / 3, c: 1 / 3 };
   if (item.type === 'rank') return Array.isArray(displayValue) ? displayValue : [];
   if (item.type === 'multi_choice' && Array.isArray(displayValue)) {
     return displayValue.map((t) => {
@@ -62,6 +71,12 @@ function fromDisplayValue(item, displayValue) {
 }
 
 function canProceed(item, value) {
+  if (item?.type === 'triangle') {
+    return (
+      value && typeof value.a === 'number' && typeof value.b === 'number' && typeof value.c === 'number' &&
+      Math.abs((value.a + value.b + value.c) - 1) < 0.01
+    );
+  }
   if (item?.type === 'single_choice') return value != null && value !== '';
   if (item?.type === 'multi_choice') return Array.isArray(value) && value.length > 0;
   if (item?.type === 'rank') return Array.isArray(value) && value.length === (item.options?.length ?? 0);
@@ -324,19 +339,32 @@ export default function ResultsAnswersPage() {
           <ModalHeader>Change your answer</ModalHeader>
           <ModalBody>
             {editModal.item && (
-              <PreSurveyQuestion
-                question={{
-                  id: editModal.item.questionId,
-                  title: editModal.item.title,
-                  description: editModal.item.description,
-                  type: editModal.item.type || 'single_choice',
-                  options: editModal.item.options ?? [],
-                }}
-                value={editModal.draftValue}
-                onChange={(v) => setEditModal((prev) => ({ ...prev, draftValue: v }))}
-                optional={false}
-                maxSelections={editModal.item.maxSelections}
-              />
+              editModal.item.type === 'triangle' ? (
+                <TriangleQuestion
+                  question={{
+                    id: editModal.item.questionId,
+                    title: editModal.item.title,
+                    prompt: editModal.item.prompt,
+                    vertices: editModal.item.vertices ?? {},
+                  }}
+                  value={editModal.draftValue}
+                  onChange={(v) => setEditModal((prev) => ({ ...prev, draftValue: v }))}
+                />
+              ) : (
+                <PreSurveyQuestion
+                  question={{
+                    id: editModal.item.questionId,
+                    title: editModal.item.title,
+                    description: editModal.item.description,
+                    type: editModal.item.type || 'single_choice',
+                    options: editModal.item.options ?? [],
+                  }}
+                  value={editModal.draftValue}
+                  onChange={(v) => setEditModal((prev) => ({ ...prev, draftValue: v }))}
+                  optional={false}
+                  maxSelections={editModal.item.maxSelections}
+                />
+              )
             )}
           </ModalBody>
           <ModalFooter>

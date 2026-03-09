@@ -251,10 +251,15 @@ export default function ResultsTraitsValuesPage() {
     return list;
   }, [aptitudesList, sortOrderAptitudes]);
 
-  const radarDimensions = useMemo(
-    () => [...rawAptitudes, ...rawTraits, ...rawValues],
-    [rawAptitudes, rawTraits, rawValues]
-  );
+  /** Radar order: higher to lower score within each category so the chart area is more representative. */
+  const radarDimensions = useMemo(() => {
+    const byMeanDesc = (a, b) => (b.mean ?? 0) - (a.mean ?? 0);
+    return [
+      ...[...rawAptitudes].sort(byMeanDesc),
+      ...[...rawTraits].sort(byMeanDesc),
+      ...[...rawValues].sort(byMeanDesc),
+    ];
+  }, [rawAptitudes, rawTraits, rawValues]);
 
   const openDetail = useCallback((dimension, type) => {
     setSelectedDimension(dimension);
