@@ -22,6 +22,35 @@ import { getAssessment, replaceAnswers } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
+/** Short display name for a dimension id (e.g. value_mastery_growth -> Mastery growth). */
+function dimensionShortName(dimensionId) {
+  if (typeof dimensionId !== 'string') return '';
+  const parts = dimensionId.replace(/^(value_|trait_|aptitude_)/, '').split('_');
+  return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+/** For a triangle answer, return how it was interpreted: scores 1-5 per dimension and a one-line summary. */
+function triangleInterpretation(item, userAnswer) {
+  if (item?.type !== 'triangle' || !item.vertices || typeof userAnswer !== 'object') return null;
+  const va = item.vertices.a || {};
+  const vb = item.vertices.b || {};
+  const vc = item.vertices.c || {};
+  const a = Math.max(0, Math.min(1, Number(userAnswer.a) || 1 / 3));
+  const b = Math.max(0, Math.min(1, Number(userAnswer.b) || 1 / 3));
+  const c = Math.max(0, Math.min(1, Number(userAnswer.c) || 1 / 3));
+  const sum = a + b + c;
+  const na = sum > 0 ? a / sum : 1 / 3;
+  const nb = sum > 0 ? b / sum : 1 / 3;
+  const nc = sum > 0 ? c / sum : 1 / 3;
+  const score = (coord) => Math.round((coord * 4 + 1) * 100) / 100;
+  const band = (s) => (s <= 2 ? 'low' : s >= 4 ? 'high' : 'medium');
+  return {
+    a: { id: va.dimensionId, name: dimensionShortName(va.dimensionId), pct: Math.round(na * 100), score: score(na), band: band(score(na)) },
+    b: { id: vb.dimensionId, name: dimensionShortName(vb.dimensionId), pct: Math.round(nb * 100), score: score(nb), band: band(score(nb)) },
+    c: { id: vc.dimensionId, name: dimensionShortName(vc.dimensionId), pct: Math.round(nc * 100), score: score(nc), band: band(score(nc)) },
+  };
+}
+
 function formatAnswer(question, userAnswer) {
   if (userAnswer == null || userAnswer === '') return 'No answer';
   if (question?.type === 'triangle' && typeof userAnswer === 'object' && userAnswer.a != null && userAnswer.b != null && userAnswer.c != null) {
@@ -303,6 +332,15 @@ export default function ResultsAnswersPage() {
                           Change answer
                         </Button>
                       </Box>
+                      {item.type === 'triangle' && (() => {
+                        const interp = triangleInterpretation(item, effectiveAnswer);
+                        if (!interp) return null;
+                        return (
+                          <Text fontSize="xs" color="chakra-subtle-text" mt={2} lineHeight="tall">
+                            How this was interpreted: A = {interp.a.name} ({interp.a.band}, score {interp.a.score}), B = {interp.b.name} ({interp.b.band}, score {interp.b.score}), C = {interp.c.name} ({interp.c.band}, score {interp.c.score}). Your profile combines all triangles; this question is one input.
+                          </Text>
+                        );
+                      })()}
                     </Box>
                   );
                 })}

@@ -38,6 +38,53 @@ const BUCKET_LABELS = {
   high: 'High time investment',
 };
 
+const STRUCTURAL_KEYS = [
+  'ai_resistance',
+  'leverage_multiplier',
+  'authority_pathway',
+  'scarcity_durability',
+  'transferability',
+  'time_to_compound',
+];
+
+function hasFullStructuralScores(skill) {
+  const ss = skill.structural_scores;
+  if (!ss || typeof ss !== 'object') return false;
+  return STRUCTURAL_KEYS.every((k) => typeof ss[k] === 'number');
+}
+
+/** AI future score 0-1. Uses ai_future_score or computes from structural_scores. Returns null if unknown. */
+function aiFutureScore(skill) {
+  if (typeof skill.ai_future_score === 'number' && skill.ai_future_score >= 0 && skill.ai_future_score <= 1) {
+    return skill.ai_future_score;
+  }
+  const ss = skill.structural_scores;
+  if (ss && hasFullStructuralScores(skill)) {
+    const r = (ss.ai_resistance ?? 0) / 5;
+    const l = (ss.leverage_multiplier ?? 0) / 5;
+    const a = (ss.authority_pathway ?? 0) / 5;
+    const s = (ss.scarcity_durability ?? 0) / 5;
+    const t = (ss.transferability ?? 0) / 5;
+    const c = (ss.time_to_compound ?? 0) / 5;
+    return (r + l + a + s + t + c) / 6;
+  }
+  return null;
+}
+
+/** Compatibility ratio 0-1 from applicability / maxApplicability. */
+function compatibilityRatio(applicability, maxApplicability) {
+  if (maxApplicability == null || maxApplicability <= 0) return 0;
+  return Math.min(1, (applicability ?? 0) / maxApplicability);
+}
+
+/** Chakra color for AI band: high (green), medium (yellow), low (red). aiScore01 in 0-1. */
+function getAiBandColor(aiScore01) {
+  if (aiScore01 == null || Number.isNaN(aiScore01)) return 'gray.400';
+  if (aiScore01 >= 2 / 3) return 'green.500';
+  if (aiScore01 >= 1 / 3) return 'yellow.500';
+  return 'red.500';
+}
+
 const SHORT_DESC_LENGTH = 220;
 
 /** First paragraph or first N characters for shortened description. */
@@ -66,6 +113,16 @@ function skillMatchDisplay(applicability, maxApplicability) {
   else if (score >= 1.8) band = 'Low';
   else band = 'Very Low';
   return { text, band };
+}
+
+function trendLabel(aiTrend) {
+  if (!aiTrend) return null;
+  const t = String(aiTrend).toLowerCase();
+  if (t === 'grows') return 'Grows';
+  if (t === 'stays') return 'Stays';
+  if (t === 'decreasing') return 'Decreasing';
+  if (t === 'mixed') return 'Mixed';
+  return aiTrend;
 }
 
 function SkillDefinitionContent({
@@ -112,8 +169,48 @@ function SkillDefinitionContent({
     );
   }
 
+  const aiScore = aiFutureScore(skill);
+  const aiFutureDisplay =
+    aiScore != null ? (Math.round((1 + aiScore * 4) * 10) / 10).toFixed(1) : null;
+  const trend = trendLabel(skill.ai_trend);
+
   return (
     <VStack align="stretch" spacing={4}>
+      <Box {...sectionProps}>
+        <Text fontWeight="semibold" fontSize="xs" mb={3} color="accent">
+          At a glance
+        </Text>
+        <VStack align="stretch" spacing={2}>
+          <Text fontSize="sm" color="chakra-body-text">
+            <Text as="span" fontWeight="medium" color="chakra-subtle-text">
+              Your match{' '}
+            </Text>
+            <Text as="span" fontWeight="medium" color="accent">
+              {match.text}
+            </Text>
+            {match.band && (
+              <Text as="span" color="chakra-subtle-text">
+                {' '}({match.band})
+              </Text>
+            )}
+          </Text>
+          {aiFutureDisplay != null && (
+            <Text fontSize="sm" color="chakra-body-text">
+              <Text as="span" fontWeight="medium" color="chakra-subtle-text">
+                AI future{' '}
+              </Text>
+              <Text as="span" fontWeight="medium">
+                {aiFutureDisplay}
+              </Text>
+              {trend && (
+                <Text as="span" color="chakra-subtle-text">
+                  {' '}({trend})
+                </Text>
+              )}
+            </Text>
+          )}
+        </VStack>
+      </Box>
       {(shortDesc || skill.description) && (
         <Box {...sectionProps}>
           <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
@@ -124,19 +221,6 @@ function SkillDefinitionContent({
           </Text>
         </Box>
       )}
-      <Box {...sectionProps}>
-        <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
-          Your match
-        </Text>
-        <Text fontSize="sm" color="chakra-body-text">
-          {match.text}
-          {match.band && (
-            <Text as="span" color="chakra-subtle-text">
-              {' '}({match.band})
-            </Text>
-          )}
-        </Text>
-      </Box>
       {!shortDesc && !skill.description && (
         <Text fontSize="sm" color="chakra-subtle-text">
           No definition available for {label}.
@@ -303,18 +387,25 @@ export default function RecommendationsPage() {
       const skills = data?.skillDevelopmentRoadmap ?? [];
       const maxApp = skills.length ? Math.max(...skills.map((s) => s.applicability ?? 0), 0) : 0;
       const highBucket = [];
+      const mediumBucket = [];
       const poolList = [];
       skills.forEach((s) => {
         const copy = { ...s };
-        const ratio = maxApp > 0 ? (s.applicability ?? 0) / maxApp : 0;
-        if (ratio > 2 / 3) {
+        const compatRatio = compatibilityRatio(s.applicability, maxApp);
+        const ai = aiFutureScore(s);
+        const highAi = ai != null && ai >= 2 / 3;
+        const highCompat = compatRatio > 2 / 3;
+        const mediumCompat = compatRatio > 1 / 3 && compatRatio <= 2 / 3;
+        if (highCompat && highAi) {
           highBucket.push(copy);
+        } else if (highAi && mediumCompat) {
+          mediumBucket.push(copy);
         } else {
           poolList.push(copy);
         }
       });
       setPool(poolList);
-      setBuckets({ low: [], medium: [], high: highBucket });
+      setBuckets({ low: [], medium: mediumBucket, high: highBucket });
     } catch (err) {
       setError(err.message || 'We couldn\'t load your careers. Try again or start a new discovery.');
       setReport(null);
@@ -465,6 +556,8 @@ export default function RecommendationsPage() {
     const colorScheme = getSkillTileColor(skill.applicability, maxApplicability);
     const label = (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
     const fromPool = source === 'pool';
+    const aiScore = aiFutureScore(skill);
+    const aiColor = getAiBandColor(aiScore);
     return (
       <Box key={skill.id} flex="0 0 calc(50% - 4px)" minW={0}>
         <Menu placement="bottom-start" isLazy>
@@ -476,6 +569,7 @@ export default function RecommendationsPage() {
           minW={0}
           h="9"
           px={3}
+          pr={5}
           py={2}
           borderRadius="md"
           borderWidth="1px"
@@ -496,8 +590,23 @@ export default function RecommendationsPage() {
           textOverflow="ellipsis"
           whiteSpace="nowrap"
           title={label}
+          position="relative"
         >
-          {label}
+          <HStack w="100%" h="100%" justify="space-between" gap={2} minW={0}>
+            <Text as="span" flex={1} minW={0} noOfLines={1}>
+              {label}
+            </Text>
+            {aiScore != null && (
+              <Box
+                flexShrink={0}
+                w="2"
+                h="2"
+                borderRadius="full"
+                bg={aiColor}
+                title={`AI applicability: ${(1 + aiScore * 4).toFixed(1)}/5`}
+              />
+            )}
+          </HStack>
         </MenuButton>
         <MenuList minW="220px" zIndex={10}>
           {!fromPool && (
@@ -654,9 +763,14 @@ export default function RecommendationsPage() {
               >
                 ← Back to results
               </Button>
-              <Text color="chakra-subtle-text" fontSize="sm">
-                Tap or drag skills into time-investment buckets. Careers below match the skills you assign. Top bar: green = strong fit, yellow = medium, red = low fit to your profile.
-              </Text>
+              <VStack align="stretch" spacing={1} alignItems="flex-start">
+                <Text color="chakra-subtle-text" fontSize="sm">
+                  Drag skills into buckets. Careers below match what you pick.
+                </Text>
+                <Text color="chakra-subtle-text" fontSize="sm">
+                  Bar = your fit (green good, red low). Dot = AI fit (same colors).
+                </Text>
+              </VStack>
             </Box>
 
             <Box w="full">

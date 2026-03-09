@@ -15,6 +15,15 @@ import { stripMarkdown } from '../../utils/format';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
+/** Split summary text into paragraphs (double newline or single when LLM uses \n\n). Preserves single paragraphs. */
+function splitSummaryParagraphs(text) {
+  if (typeof text !== 'string' || !text.trim()) return [];
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
 export default function ResultsProfilePage() {
   const location = useLocation();
   const [report, setReport] = useState(null);
@@ -98,9 +107,7 @@ export default function ResultsProfilePage() {
     );
   }
 
-  const summaryLLM = report?.strengthProfileSummaryLLM ?? null;
-  const summaryHybrid = report?.strengthProfileSummaryHybrid ?? null;
-  const hasContent = summaryLLM || summaryHybrid;
+  const profileSummary = report?.profileSummary ?? null;
 
   return (
     <>
@@ -118,47 +125,38 @@ export default function ResultsProfilePage() {
             >
               ← Back to results
             </Button>
-            {hasContent ? (
-              <>
-                {summaryLLM && (
-                  <Box
-                    p={6}
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor="chakra-border-color"
-                    borderLeftWidth="4px"
-                    borderLeftColor="accent"
-                    bg="chakra-body-bg"
-                    boxShadow="sm"
-                  >
-                    <Heading size="sm" mb={3} color="chakra-subtle-text">
-                      Your discovered strengths and profile
-                    </Heading>
-                    <Text fontSize="sm" whiteSpace="pre-wrap" lineHeight="tall">
-                      {stripMarkdown(summaryLLM)}
+            {profileSummary ? (
+              <Box
+                p={6}
+                borderRadius="lg"
+                borderWidth="1px"
+                borderColor="chakra-border-color"
+                borderLeftWidth="4px"
+                borderLeftColor="accent"
+                bg="chakra-body-bg"
+                boxShadow="sm"
+              >
+                <Heading size="sm" mb={5} color="chakra-subtle-text">
+                  Your discovered strengths and profile
+                </Heading>
+                <Box
+                  as="article"
+                  maxW="65ch"
+                  sx={{ '& > p': { mb: 4 }, '& > p:last-child': { mb: 0 } }}
+                >
+                  {splitSummaryParagraphs(stripMarkdown(profileSummary)).map((para, i) => (
+                    <Text
+                      key={i}
+                      as="p"
+                      fontSize="md"
+                      lineHeight="1.75"
+                      color="chakra-body-text"
+                    >
+                      {para}
                     </Text>
-                  </Box>
-                )}
-                {summaryHybrid && (
-                  <Box
-                    p={6}
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor="chakra-border-color"
-                    borderLeftWidth="4px"
-                    borderLeftColor="accent"
-                    bg="chakra-body-bg"
-                    boxShadow="sm"
-                  >
-                    <Heading size="sm" mb={3} color="chakra-subtle-text">
-                      {summaryLLM ? 'Another view of your profile' : 'Your discovered strengths and profile'}
-                    </Heading>
-                    <Text fontSize="sm" whiteSpace="pre-wrap" lineHeight="tall">
-                      {stripMarkdown(summaryHybrid)}
-                    </Text>
-                  </Box>
-                )}
-              </>
+                  ))}
+                </Box>
+              </Box>
             ) : (
               <Text color="chakra-subtle-text">
                 No profile summary yet. Complete a discovery to build your profile.

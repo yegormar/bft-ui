@@ -53,7 +53,60 @@ function clampBarycentric({ a, b, c }) {
 
 const SVG_SIZE = 380;
 const BALL_R = 14;
-const STROKE_WIDTH = 2;
+const STROKE_PERIMETER = 2.5;
+const STROKE_HELPER = 1;
+
+const A = VERTICES.a;
+const B = VERTICES.b;
+const C = VERTICES.c;
+
+const CENTROID = {
+  x: (A.x + B.x + C.x) / 3,
+  y: (A.y + B.y + C.y) / 3,
+};
+
+const MID_BC = { x: (B.x + C.x) / 2, y: (B.y + C.y) / 2 };
+const MID_AB = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+const MID_AC = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
+
+const strokeMain = 'var(--chakra-colors-brand-400)';
+const strokeHelper = 'var(--chakra-colors-brand-300)';
+
+const INNER_FRAC = 1 / 3;
+
+/** Closest point on segment (s1, s2) to point p (projection onto segment). */
+function projectOntoSegment(p, s1, s2) {
+  const sx = s2.x - s1.x;
+  const sy = s2.y - s1.y;
+  const len2 = sx * sx + sy * sy;
+  if (len2 < 1e-10) return { x: s1.x, y: s1.y };
+  let t = ((p.x - s1.x) * sx + (p.y - s1.y) * sy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return { x: s1.x + t * sx, y: s1.y + t * sy };
+}
+
+/** Diamond tip at a vertex: inner point V' on the way from V to centroid; from V' project onto the two sides that meet at V to get the kite. Thick: V-inner, inner-side1, inner-side2. */
+function diamondAtVertex(vertex, other1, other2) {
+  const inner = {
+    x: vertex.x + INNER_FRAC * (CENTROID.x - vertex.x),
+    y: vertex.y + INNER_FRAC * (CENTROID.y - vertex.y),
+  };
+  const onSide1 = projectOntoSegment(inner, vertex, other1);
+  const onSide2 = projectOntoSegment(inner, vertex, other2);
+  const thick = [
+    { x1: vertex.x, y1: vertex.y, x2: inner.x, y2: inner.y },
+    { x1: inner.x, y1: inner.y, x2: onSide1.x, y2: onSide1.y },
+    { x1: inner.x, y1: inner.y, x2: onSide2.x, y2: onSide2.y },
+  ];
+  return { inner, thick };
+}
+
+function allDiamondTips() {
+  const atA = diamondAtVertex(A, B, C);
+  const atB = diamondAtVertex(B, A, C);
+  const atC = diamondAtVertex(C, A, B);
+  return { atA, atB, atC };
+}
 
 /**
  * Triangle assessment question: drag the ball to the position that best represents you.
@@ -214,10 +267,35 @@ export default function TriangleQuestion({ question, value, onChange }) {
           <path
             d={pathD}
             fill="url(#triangle-fill)"
-            stroke="var(--chakra-colors-brand-300)"
-            strokeWidth={STROKE_WIDTH}
+            stroke={strokeMain}
+            strokeWidth={STROKE_PERIMETER}
             strokeLinejoin="round"
           />
+          {/* Thick: diamond-shaped tips at each vertex (vertex to inner point, inner to two sides) */}
+          {(() => {
+            const { atA, atB, atC } = allDiamondTips();
+            const s = SVG_SIZE;
+            return (
+              <>
+                {atA.thick.map((seg, i) => (
+                  <line key={`a${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
+                ))}
+                {atB.thick.map((seg, i) => (
+                  <line key={`b${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
+                ))}
+                {atC.thick.map((seg, i) => (
+                  <line key={`c${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
+                ))}
+                {/* Thin: center to side midpoints (bias directions) and center to each diamond inner point */}
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_BC.x * s} y2={MID_BC.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_AB.x * s} y2={MID_AB.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_AC.x * s} y2={MID_AC.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={atA.inner.x * s} y2={atA.inner.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={atB.inner.x * s} y2={atB.inner.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+                <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={atC.inner.x * s} y2={atC.inner.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
+              </>
+            );
+          })()}
           {vertexLabels.map(({ key, x, y, label }) => (
             <g key={key}>
               <circle

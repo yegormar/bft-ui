@@ -203,7 +203,7 @@ export default function DimensionsRadarChart({ dimensions, dimensionMeta }) {
           ]}
           sliceTooltip={({ index }) => {
             const fullName = subjectToFullName[index] ?? index;
-            const row = data[index];
+            const row = data.find((d) => d.subject === index);
             const scoreStr =
               row?.displayScore != null ? roundTo1(row.displayScore) : '-';
             return (

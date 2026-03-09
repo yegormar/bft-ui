@@ -71,6 +71,16 @@ export async function getReport(sessionId, options = {}) {
 }
 
 /**
+ * Get session payload for LLM: single JSON with questions_and_answers, dimensions (with scores and metadata),
+ * skills (with applicability), and personality_cluster (pre_survey_profile + Q&A). Use for Profile Summary
+ * evidence sections, fallback when LLM summary is missing, or as input to summary/recommendations LLM.
+ * See bft-doc/session-payload-for-llm.md and bft-doc/profile-summary-page-and-payload.md.
+ */
+export async function getReportPayload(sessionId) {
+  return request('GET', `/sessions/${sessionId}/report/payload`);
+}
+
+/**
  * Get occupations scored by selected skill IDs.
  * With groupByCategory true, returns { groups: [ { categoryKey, categoryLabel, occupations } ] }.
  * Otherwise returns flat [{ nocCode, name, matchScore, categoryKey, categoryLabel }].
