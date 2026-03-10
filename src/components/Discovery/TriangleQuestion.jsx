@@ -72,7 +72,9 @@ const MID_AC = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
 const strokeMain = 'var(--chakra-colors-brand-400)';
 const strokeHelper = 'var(--chakra-colors-brand-300)';
 
-const INNER_FRAC = 1 / 3;
+/** Match backend corner zone: dominant weight >= 0.7. On vertex-to-centroid line, weight goes 1 -> 1/3; inner point where weight = 0.7. */
+const CORNER_THRESHOLD = 0.7;
+const INNER_FRAC = (1 - CORNER_THRESHOLD) / (1 - 1 / 3);
 
 /** Closest point on segment (s1, s2) to point p (projection onto segment). */
 function projectOntoSegment(p, s1, s2) {
@@ -231,6 +233,7 @@ export default function TriangleQuestion({ question, value, onChange }) {
         w="full"
         maxW={`${SVG_SIZE}px`}
         mx="auto"
+        color="chakra-body-text"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -271,22 +274,22 @@ export default function TriangleQuestion({ question, value, onChange }) {
             strokeWidth={STROKE_PERIMETER}
             strokeLinejoin="round"
           />
-          {/* Thick: diamond-shaped tips at each vertex (vertex to inner point, inner to two sides) */}
+          {/* Thick: diamond tip edges only (inner to two sides); no thick line vertex-to-inner inside diamond */}
           {(() => {
             const { atA, atB, atC } = allDiamondTips();
             const s = SVG_SIZE;
             return (
               <>
-                {atA.thick.map((seg, i) => (
+                {atA.thick.slice(1).map((seg, i) => (
                   <line key={`a${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
                 ))}
-                {atB.thick.map((seg, i) => (
+                {atB.thick.slice(1).map((seg, i) => (
                   <line key={`b${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
                 ))}
-                {atC.thick.map((seg, i) => (
+                {atC.thick.slice(1).map((seg, i) => (
                   <line key={`c${i}`} x1={seg.x1 * s} y1={seg.y1 * s} x2={seg.x2 * s} y2={seg.y2 * s} stroke={strokeMain} strokeWidth={STROKE_PERIMETER} />
                 ))}
-                {/* Thin: center to side midpoints (bias directions) and center to each diamond inner point */}
+                {/* Thin: center to side midpoints and center to each diamond inner point */}
                 <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_BC.x * s} y2={MID_BC.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
                 <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_AB.x * s} y2={MID_AB.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
                 <line x1={CENTROID.x * s} y1={CENTROID.y * s} x2={MID_AC.x * s} y2={MID_AC.y * s} stroke={strokeHelper} strokeWidth={STROKE_HELPER} />
@@ -313,7 +316,7 @@ export default function TriangleQuestion({ question, value, onChange }) {
                 dominantBaseline={key === 'a' ? 'auto' : 'hanging'}
                 fontSize="11"
                 fontWeight="600"
-                fill="var(--chakra-colors-brand-800)"
+                fill="currentColor"
                 style={{ pointerEvents: 'none' }}
               >
                 {key === 'a' ? 'A' : key === 'b' ? 'B' : 'C'}

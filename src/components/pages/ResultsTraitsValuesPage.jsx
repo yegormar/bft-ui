@@ -24,7 +24,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import DimensionsRadarChart from '../DimensionsRadarChart';
 import { getReport } from '../../services/surveyApi';
@@ -181,8 +181,10 @@ export default function ResultsTraitsValuesPage() {
   const [selectedType, setSelectedType] = useState(null);
   const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
 
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get('sessionId');
   const resolvedSessionId =
-    location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
+    urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
 
   const fetchReport = useCallback(async (sid) => {
     setLoading(true);

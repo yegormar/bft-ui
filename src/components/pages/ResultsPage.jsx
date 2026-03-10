@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { BarChart3, Briefcase, Heart, ListChecks, MessageCircle, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { getReport } from '../../services/surveyApi';
 
@@ -53,7 +53,7 @@ const HUB_LINKS = [
     to: '/results/answers',
     stateKey: 'sessionId',
     title: 'Your answers',
-    description: 'Questions you answered. Change answers and recalculate results.',
+    description: 'Questions you answered. Change answers and recalculate results. Re-Discover yourself.',
     icon: ListChecks,
     requiresLlm: false,
   },
@@ -147,8 +147,10 @@ function HubButton({ to, state, title, description, icon: Icon, disabled, prepar
 
 export default function ResultsPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get('sessionId');
   const resolvedSessionId =
-    location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
+    urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
   const [fullReportReady, setFullReportReady] = useState(false);
 
   const triggerFullReport = useCallback((sid) => {

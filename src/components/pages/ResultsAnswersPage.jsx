@@ -14,7 +14,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import PreSurveyQuestion from '../Discovery/PreSurveyQuestion';
 import TriangleQuestion from '../Discovery/TriangleQuestion';
@@ -29,7 +29,28 @@ function dimensionShortName(dimensionId) {
   return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 }
 
-/** For a triangle answer, return how it was interpreted: scores 1-5 per dimension and a one-line summary. */
+const REJECTION_WEIGHT_THRESHOLD = 0.15;
+
+/** Detect zone from barycentric weights [a, b, c]. Matches backend bayesianTriangleScorer. */
+function detectZone(na, nb, nc, cornerThreshold = 0.7, edgeMinThreshold = 0.2, nearCornerMin = 0.55) {
+  const arr = [na, nb, nc];
+  const sum = arr.reduce((s, x) => s + x, 0);
+  if (sum <= 0) return 'centre';
+  const n = arr.map((x) => x / sum);
+  const sorted = n.slice().sort((a, b) => b - a);
+  const maxW = sorted[0];
+  const minW = sorted[2];
+  const midW = sorted[1];
+  if (maxW >= cornerThreshold) return 'corner';
+  if (minW < edgeMinThreshold) {
+    if (maxW >= nearCornerMin) return 'near_corner';
+    if (midW >= 0.35 && midW <= 0.65 && Math.abs(maxW - midW) < 0.2) return 'edge';
+    return 'near_edge';
+  }
+  return 'centre';
+}
+
+/** For a triangle answer, return how it was interpreted: scores, zone, and a zone-based summary. */
 function triangleInterpretation(item, userAnswer) {
   if (item?.type !== 'triangle' || !item.vertices || typeof userAnswer !== 'object') return null;
   const va = item.vertices.a || {};
@@ -44,10 +65,43 @@ function triangleInterpretation(item, userAnswer) {
   const nc = sum > 0 ? c / sum : 1 / 3;
   const score = (coord) => Math.round((coord * 4 + 1) * 100) / 100;
   const band = (s) => (s <= 2 ? 'low' : s >= 4 ? 'high' : 'medium');
+  const zone = detectZone(na, nb, nc);
+  const byWeight = [
+    { key: 'a', name: dimensionShortName(va.dimensionId), w: na },
+    { key: 'b', name: dimensionShortName(vb.dimensionId), w: nb },
+    { key: 'c', name: dimensionShortName(vc.dimensionId), w: nc },
+  ].sort((x, y) => y.w - x.w);
+  const first = byWeight[0];
+  const second = byWeight[1];
+  const third = byWeight[2];
+  const rejected = third.w < REJECTION_WEIGHT_THRESHOLD ? third : null;
+  let summary;
+  if (zone === 'corner') {
+    summary = rejected
+      ? `Strongly toward ${first.name}. ${second.name} and ${third.name} are secondary or excluded.`
+      : `Strongly toward ${first.name}; ${second.name} and ${third.name} are secondary.`;
+  } else if (zone === 'near_corner') {
+    summary = rejected
+      ? `${first.name} is your main pull; ${second.name} is in play. ${third.name} is ruled out (you left it out of your choice, not a small preference for it).`
+      : `${first.name} is your main pull; ${second.name} and ${third.name} are in play.`;
+  } else if (zone === 'edge') {
+    summary = rejected
+      ? `You blend ${first.name} and ${second.name}; ${third.name} is excluded.`
+      : `You blend ${first.name} and ${second.name}.`;
+  } else if (zone === 'near_edge') {
+    summary = rejected
+      ? `Between ${first.name} and ${second.name}, with ${first.name} slightly ahead. ${third.name} is excluded.`
+      : `Between ${first.name} and ${second.name}, with ${first.name} slightly ahead.`;
+  } else {
+    summary =
+      'All three feel somewhat relevant; no strong pull in any direction. Your profile combines all triangles; this question is one input.';
+  }
   return {
     a: { id: va.dimensionId, name: dimensionShortName(va.dimensionId), pct: Math.round(na * 100), score: score(na), band: band(score(na)) },
     b: { id: vb.dimensionId, name: dimensionShortName(vb.dimensionId), pct: Math.round(nb * 100), score: score(nb), band: band(score(nb)) },
     c: { id: vc.dimensionId, name: dimensionShortName(vc.dimensionId), pct: Math.round(nc * 100), score: score(nc), band: band(score(nc)) },
+    zone,
+    summary,
   };
 }
 
@@ -125,8 +179,10 @@ export default function ResultsAnswersPage() {
   const [recalculating, setRecalculating] = useState(false);
   const [recalcError, setRecalcError] = useState(null);
 
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get('sessionId');
   const resolvedSessionId =
-    location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
+    urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
 
   const fetchAssessment = useCallback(async (sid) => {
     setLoading(true);
@@ -337,7 +393,7 @@ export default function ResultsAnswersPage() {
                         if (!interp) return null;
                         return (
                           <Text fontSize="xs" color="chakra-subtle-text" mt={2} lineHeight="tall">
-                            How this was interpreted: A = {interp.a.name} ({interp.a.band}, score {interp.a.score}), B = {interp.b.name} ({interp.b.band}, score {interp.b.score}), C = {interp.c.name} ({interp.c.band}, score {interp.c.score}). Your profile combines all triangles; this question is one input.
+                            Interpretation: {interp.summary}
                           </Text>
                         );
                       })()}

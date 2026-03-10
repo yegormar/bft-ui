@@ -8,7 +8,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { getReport } from '../../services/surveyApi';
 import { stripMarkdown } from '../../utils/format';
@@ -26,12 +26,14 @@ function splitSummaryParagraphs(text) {
 
 export default function ResultsProfilePage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get('sessionId');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const resolvedSessionId =
-    location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
+    urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
 
   const fetchReport = useCallback(async (sid) => {
     setLoading(true);
