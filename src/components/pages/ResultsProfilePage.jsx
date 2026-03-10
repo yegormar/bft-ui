@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { getReport } from '../../services/surveyApi';
-import { stripMarkdown } from '../../utils/format';
+import { stripMarkdown, sanitizeProfileHtml, hasProfileHtml } from '../../utils/format';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
@@ -144,19 +144,38 @@ export default function ResultsProfilePage() {
                 <Box
                   as="article"
                   maxW="65ch"
-                  sx={{ '& > p': { mb: 4 }, '& > p:last-child': { mb: 0 } }}
+                  sx={{
+                    '& p': { mb: 4 },
+                    '& p:last-of-type': { mb: 0 },
+                    '& h2': { fontSize: 'xl', fontWeight: 'bold', mt: 6, mb: 3 },
+                    '& h2:first-of-type': { mt: 0 },
+                    '& h3': { fontSize: 'lg', fontWeight: 'semibold', mt: 4, mb: 2 },
+                    '& b': { fontWeight: 'bold' },
+                    '& table': { width: '100%', borderCollapse: 'collapse', my: 4 },
+                    '& th, & td': { borderWidth: '1px', borderColor: 'chakra-border-color', px: 3, py: 2, textAlign: 'left' },
+                    '& th': { bg: 'chakra-subtle-bg', fontWeight: 'semibold' },
+                  }}
                 >
-                  {splitSummaryParagraphs(stripMarkdown(profileSummary)).map((para, i) => (
-                    <Text
-                      key={i}
-                      as="p"
+                  {hasProfileHtml(profileSummary) ? (
+                    <Box
                       fontSize="md"
                       lineHeight="1.75"
                       color="chakra-body-text"
-                    >
-                      {para}
-                    </Text>
-                  ))}
+                      dangerouslySetInnerHTML={{ __html: sanitizeProfileHtml(profileSummary) }}
+                    />
+                  ) : (
+                    splitSummaryParagraphs(stripMarkdown(profileSummary)).map((para, i) => (
+                      <Text
+                        key={i}
+                        as="p"
+                        fontSize="md"
+                        lineHeight="1.75"
+                        color="chakra-body-text"
+                      >
+                        {para}
+                      </Text>
+                    ))
+                  )}
                 </Box>
               </Box>
             ) : (
