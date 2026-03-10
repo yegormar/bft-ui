@@ -17,6 +17,11 @@ import {
   ModalOverlay,
   SimpleGrid,
   Spinner,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Text,
   UnorderedList,
   useBreakpointValue,
@@ -27,7 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { SkillDetailsContent } from '../SkillDetailsContent';
-import { getReport, getOccupationsBySkillIds, getOccupationByNocCode } from '../../services/surveyApi';
+import { getReport, getAppConfig, matchOccupations, postCareerPaths, getOccupationByNocCode } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
@@ -83,6 +88,14 @@ function getAiBandColor(aiScore01) {
   if (aiScore01 >= 2 / 3) return 'green.500';
   if (aiScore01 >= 1 / 3) return 'yellow.500';
   return 'red.500';
+}
+
+/** Label for occupation AI relevance (0-1). */
+function getAiRelevanceLabel(aiRelevanceFromSkills) {
+  if (aiRelevanceFromSkills == null || Number.isNaN(aiRelevanceFromSkills)) return null;
+  if (aiRelevanceFromSkills >= 2 / 3) return 'AI resilient';
+  if (aiRelevanceFromSkills >= 1 / 3) return 'Mixed';
+  return 'Higher exposure';
 }
 
 const SHORT_DESC_LENGTH = 220;
@@ -176,6 +189,21 @@ function SkillDefinitionContent({
 
   return (
     <VStack align="stretch" spacing={4}>
+      {(shortDesc || skill.description) && (
+        <Box {...sectionProps}>
+          <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
+            Definition
+          </Text>
+          <Text fontSize="sm" lineHeight="tall" color="chakra-body-text">
+            {shortDesc || skill.description}
+          </Text>
+        </Box>
+      )}
+      {!shortDesc && !skill.description && (
+        <Text fontSize="sm" color="chakra-subtle-text">
+          No definition available for {label}.
+        </Text>
+      )}
       <Box {...sectionProps}>
         <Text fontWeight="semibold" fontSize="xs" mb={3} color="accent">
           At a glance
@@ -211,21 +239,6 @@ function SkillDefinitionContent({
           )}
         </VStack>
       </Box>
-      {(shortDesc || skill.description) && (
-        <Box {...sectionProps}>
-          <Text fontWeight="semibold" fontSize="sm" mb={2} color="accent">
-            Definition
-          </Text>
-          <Text fontSize="sm" lineHeight="tall" color="chakra-body-text">
-            {shortDesc || skill.description}
-          </Text>
-        </Box>
-      )}
-      {!shortDesc && !skill.description && (
-        <Text fontSize="sm" color="chakra-subtle-text">
-          No definition available for {label}.
-        </Text>
-      )}
       {showMoreLink && (
         <Box>
           <Button
@@ -267,7 +280,7 @@ function getSkillTileColor(applicability, maxApplicability) {
 
 function OccupationDetailContent({ occupation }) {
   if (!occupation) return null;
-  const { name, nocCode, exampleTitles, mainDuties, employmentRequirements, additionalInformation } = occupation;
+  const { name, nocCode, exampleTitles, mainDuties, employmentRequirements, additionalInformation, aiRelevanceFromSkills } = occupation;
   const sectionProps = {
     p: 4,
     borderRadius: 'lg',
@@ -291,6 +304,11 @@ function OccupationDetailContent({ occupation }) {
           {nocCode && (
             <Text fontSize="xs" color="chakra-subtle-text" mt={1}>
               NOC {nocCode}
+            </Text>
+          )}
+          {aiRelevanceFromSkills != null && getAiRelevanceLabel(aiRelevanceFromSkills) && (
+            <Text fontSize="xs" mt={1} color={getAiBandColor(aiRelevanceFromSkills)}>
+              AI relevance: {getAiRelevanceLabel(aiRelevanceFromSkills)}
             </Text>
           )}
         </Box>
@@ -352,8 +370,13 @@ export default function RecommendationsPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [occupationGroups, setOccupationGroups] = useState([]);
+  const [appConfig, setAppConfig] = useState(null);
+  const [configError, setConfigError] = useState(null);
+  const [occupationsList, setOccupationsList] = useState([]);
   const [occupationsLoading, setOccupationsLoading] = useState(false);
+  const [careerPaths, setCareerPaths] = useState(null);
+  const [careerPathsLoading, setCareerPathsLoading] = useState(false);
+  const [careerPathsError, setCareerPathsError] = useState(null);
   const [selectedOccupation, setSelectedOccupation] = useState(null);
   const [occupationDetail, setOccupationDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -364,6 +387,7 @@ export default function RecommendationsPage() {
 
   const [pool, setPool] = useState([]);
   const [buckets, setBuckets] = useState({ low: [], medium: [], high: [] });
+  const [careersTabIndex, setCareersTabIndex] = useState(0);
 
   const bucketDisplayOrder = useBreakpointValue({
     base: ['high', 'medium', 'low'],
@@ -380,6 +404,34 @@ export default function RecommendationsPage() {
   const resolvedSessionId =
     urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
 
+  function computeRecommendedAllocation(skills) {
+    const list = skills || [];
+    const maxApp = list.length ? Math.max(...list.map((s) => s.applicability ?? 0), 0) : 0;
+    const highBucket = [];
+    const mediumBucket = [];
+    const lowBucket = [];
+    const poolList = [];
+    list.forEach((s) => {
+      const copy = { ...s };
+      const compatRatio = compatibilityRatio(s.applicability, maxApp);
+      const ai = aiFutureScore(s);
+      const highAi = ai != null && ai >= 2 / 3;
+      const highCompat = compatRatio > 2 / 3;
+      const mediumCompat = compatRatio > 1 / 3 && compatRatio <= 2 / 3;
+      const lowCompat = compatRatio <= 1 / 3;
+      if (highCompat && highAi) {
+        highBucket.push(copy);
+      } else if (highAi && mediumCompat) {
+        mediumBucket.push(copy);
+      } else if (highAi && lowCompat) {
+        lowBucket.push(copy);
+      } else {
+        poolList.push(copy);
+      }
+    });
+    return { pool: poolList, buckets: { low: lowBucket, medium: mediumBucket, high: highBucket } };
+  }
+
   const fetchReport = useCallback(async (sid) => {
     setLoading(true);
     setError(null);
@@ -387,27 +439,9 @@ export default function RecommendationsPage() {
       const data = await getReport(sid);
       setReport(data);
       const skills = data?.skillDevelopmentRoadmap ?? [];
-      const maxApp = skills.length ? Math.max(...skills.map((s) => s.applicability ?? 0), 0) : 0;
-      const highBucket = [];
-      const mediumBucket = [];
-      const poolList = [];
-      skills.forEach((s) => {
-        const copy = { ...s };
-        const compatRatio = compatibilityRatio(s.applicability, maxApp);
-        const ai = aiFutureScore(s);
-        const highAi = ai != null && ai >= 2 / 3;
-        const highCompat = compatRatio > 2 / 3;
-        const mediumCompat = compatRatio > 1 / 3 && compatRatio <= 2 / 3;
-        if (highCompat && highAi) {
-          highBucket.push(copy);
-        } else if (highAi && mediumCompat) {
-          mediumBucket.push(copy);
-        } else {
-          poolList.push(copy);
-        }
-      });
+      const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(skills);
       setPool(poolList);
-      setBuckets({ low: [], medium: mediumBucket, high: highBucket });
+      setBuckets(initialBuckets);
     } catch (err) {
       setError(err.message || 'We couldn\'t load your careers. Try again or start a new discovery.');
       setReport(null);
@@ -415,6 +449,22 @@ export default function RecommendationsPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleResetToRecommended = useCallback(() => {
+    const skills = report?.skillDevelopmentRoadmap ?? [];
+    const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
+    const byId = new Map(all.map((s) => [s.id, s]));
+    const ordered = skills.map((s) => byId.get(s.id) ?? { ...s }).filter(Boolean);
+    const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(ordered.length ? ordered : all);
+    setPool(poolList);
+    setBuckets(initialBuckets);
+  }, [report, pool, buckets]);
+
+  const handleCleanBuckets = useCallback(() => {
+    const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
+    setPool(all);
+    setBuckets({ low: [], medium: [], high: [] });
+  }, [pool, buckets]);
 
   useEffect(() => {
     if (resolvedSessionId) {
@@ -424,42 +474,83 @@ export default function RecommendationsPage() {
     }
   }, [resolvedSessionId, fetchReport]);
 
+  useEffect(() => {
+    setConfigError(null);
+    getAppConfig()
+      .then((data) => {
+        setAppConfig(data);
+      })
+      .catch((err) => {
+        setConfigError(err.message || 'Could not load config.');
+        setAppConfig(null);
+      });
+  }, []);
+
   const maxApplicability = useMemo(() => {
     const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
     if (all.length === 0) return 0;
     return Math.max(...all.map((s) => s.applicability ?? 0), 0);
   }, [pool, buckets]);
 
-  const skillIdsInBuckets = useMemo(() => {
-    const ids = new Set();
-    BUCKET_KEYS.forEach((key) => {
-      buckets[key].forEach((s) => s.id && ids.add(s.id));
+  const matchSkillsPayload = useMemo(() => {
+    const list = [];
+    BUCKET_KEYS.forEach((bucketKey) => {
+      buckets[bucketKey].forEach((s) => {
+        if (s.id) {
+          list.push({
+            id: s.id,
+            bucket: bucketKey,
+            applicability: typeof s.applicability === 'number' ? s.applicability : 0,
+          });
+        }
+      });
     });
-    return Array.from(ids);
+    return list;
   }, [buckets]);
 
+  /**
+   * Top 6: always include top 3 by match score (so user never misses best match), then add 3
+   * diversified from the rest (max 1 per NOC major group) so the list is not all same-type roles.
+   */
+  const topOccupations = useMemo(() => {
+    const top3 = occupationsList.slice(0, 3);
+    const rest = occupationsList.slice(3);
+    const categoriesInTop3 = new Set(top3.map((occ) => occ.categoryKey || occ.categoryLabel || 'other'));
+    const diversified = [];
+    const seenCategory = new Set(categoriesInTop3);
+    for (const occ of rest) {
+      if (diversified.length >= 3) break;
+      const key = occ.categoryKey || occ.categoryLabel || 'other';
+      if (seenCategory.has(key)) continue;
+      diversified.push(occ);
+      seenCategory.add(key);
+    }
+    return [...top3, ...diversified];
+  }, [occupationsList]);
+
   useEffect(() => {
-    if (skillIdsInBuckets.length === 0) {
-      setOccupationGroups([]);
+    if (matchSkillsPayload.length === 0 || !report) {
+      setOccupationsList([]);
       return;
     }
     let cancelled = false;
     setOccupationsLoading(true);
-    getOccupationsBySkillIds(skillIdsInBuckets, true)
+    const dimensionScores = report.dimensionScores || { traits: [], values: [] };
+    matchOccupations(matchSkillsPayload, dimensionScores, false)
       .then((data) => {
         if (!cancelled) {
-          const groups = data && Array.isArray(data.groups) ? data.groups : [];
-          setOccupationGroups(groups);
+          const list = Array.isArray(data) ? data : [];
+          setOccupationsList(list);
         }
       })
       .catch(() => {
-        if (!cancelled) setOccupationGroups([]);
+        if (!cancelled) setOccupationsList([]);
       })
       .finally(() => {
         if (!cancelled) setOccupationsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [skillIdsInBuckets.join(',')]);
+  }, [matchSkillsPayload, report]);
 
   const moveSkill = useCallback((skill, fromSource, toBucket) => {
     const fromPool = fromSource === 'pool';
@@ -553,6 +644,24 @@ export default function RecommendationsPage() {
     setSkillForDefinition(null);
     setSkillDefExpanded(false);
   }, [onSkillDefClose]);
+
+  const handleGenerateCareerPaths = useCallback(async () => {
+    if (!resolvedSessionId || matchSkillsPayload.length === 0) return;
+    setCareerPathsError(null);
+    setCareerPathsLoading(true);
+    setCareerPaths(null);
+    try {
+      const skills = matchSkillsPayload.map((s) => ({ id: s.id, bucket: s.bucket }));
+      const data = await postCareerPaths(resolvedSessionId, skills);
+      setCareerPaths(data);
+    } catch (err) {
+      const msg = err.body?.error || err.message || 'Failed to generate career paths.';
+      setCareerPathsError(msg);
+      setCareerPaths(null);
+    } finally {
+      setCareerPathsLoading(false);
+    }
+  }, [resolvedSessionId, matchSkillsPayload]);
 
   const renderSkillTile = useCallback((skill, source) => {
     const colorScheme = getSkillTileColor(skill.applicability, maxApplicability);
@@ -799,9 +908,30 @@ export default function RecommendationsPage() {
             </Box>
 
             <Box w="full">
-              <Heading size="sm" mb={3} color="chakra-body-text">
-                Time investment
-              </Heading>
+              <HStack mb={3} spacing={3} align="center" flexWrap="wrap">
+                <Heading size="sm" color="chakra-body-text">
+                  Time investment
+                </Heading>
+                <HStack spacing={2} fontSize="sm">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    colorScheme="brand"
+                    onClick={handleResetToRecommended}
+                  >
+                    Reset
+                  </Button>
+                  <Text color="chakra-subtle-text">|</Text>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    colorScheme="brand"
+                    onClick={handleCleanBuckets}
+                  >
+                    Clean
+                  </Button>
+                </HStack>
+              </HStack>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                 {bucketDisplayOrder.map((key) => (
                   <Box key={key}>{renderBucket(key)}</Box>
@@ -811,61 +941,133 @@ export default function RecommendationsPage() {
 
             <Box w="full">
               <Heading size="sm" mb={3} color="chakra-body-text">
-                Careers that match your selected skills
+                Careers
               </Heading>
-              {skillIdsInBuckets.length === 0 ? (
-                <Text color="chakra-subtle-text" fontSize="sm">
-                  Move skills into the buckets above to see matching careers.
-                </Text>
-              ) : occupationsLoading ? (
+              {appConfig === null && !configError ? (
                 <HStack spacing={2}>
                   <Spinner size="sm" />
-                  <Text color="chakra-subtle-text" fontSize="sm">Loading careers...</Text>
+                  <Text color="chakra-subtle-text" fontSize="sm">Loading...</Text>
                 </HStack>
-              ) : occupationGroups.length === 0 ? (
-                <Text color="chakra-subtle-text" fontSize="sm">
-                  No occupations match the selected skills.
-                </Text>
+              ) : configError ? (
+                <Text color="red.500" fontSize="sm">{configError}</Text>
               ) : (
-                <VStack align="stretch" spacing={6}>
-                  {occupationGroups.map((group) => (
-                    <Box key={group.categoryKey || group.categoryLabel || 'other'}>
-                      <Text fontSize="sm" color="chakra-subtle-text" mb={3} fontWeight="semibold">
-                        {group.categoryLabel}
-                      </Text>
-                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
-                        {(group.occupations || []).map((occ) => (
-                          <Box
-                            key={occ.nocCode}
-                            as="button"
-                            type="button"
-                            textAlign="left"
-                            p={4}
-                            borderWidth="1px"
-                            borderRadius="lg"
-                            borderColor="chakra-border-color"
-                            borderLeftWidth="4px"
-                            borderLeftColor="accent"
-                            bg="chakra-body-bg"
-                            boxShadow="sm"
-                            cursor="pointer"
-                            onClick={() => openOccupationDetail(occ)}
-                            _hover={{ bg: 'blackAlpha.50', _dark: { bg: 'whiteAlpha.50' } }}
+                <Tabs index={careersTabIndex} onChange={setCareersTabIndex} variant="enclosed" colorScheme="brand">
+                  <TabList>
+                    <Tab>Career paths</Tab>
+                    <Tab>Job match</Tab>
+                  </TabList>
+                  <TabPanels pt={3}>
+                    <TabPanel px={0}>
+                      {matchSkillsPayload.length === 0 ? (
+                        <Text color="chakra-subtle-text" fontSize="sm">
+                          Move skills into the buckets above, then click Generate career paths.
+                        </Text>
+                      ) : (
+                        <>
+                          <Button
+                            colorScheme="brand"
+                            size="md"
+                            onClick={handleGenerateCareerPaths}
+                            isDisabled={careerPathsLoading}
+                            mb={4}
                           >
-                            <Text fontWeight="semibold" fontSize="md">
-                              {occ.name}
-                            </Text>
-                            {occ.matchScore != null && (
-                              <Text fontSize="xs" color="chakra-subtle-text" mt={1}>
-                                Match: {occ.matchScore}
+                            {careerPathsLoading ? 'Generating...' : 'Generate career paths'}
+                          </Button>
+                          {careerPathsError && (
+                            <Text color="red.500" fontSize="sm" mb={3}>{careerPathsError}</Text>
+                          )}
+                          {careerPaths && Array.isArray(careerPaths.paths) && careerPaths.paths.length > 0 && (
+                            <VStack align="stretch" spacing={4}>
+                              {careerPaths.paths.map((path, idx) => (
+                                <Box
+                                  key={idx}
+                                  p={4}
+                                  borderWidth="1px"
+                                  borderRadius="lg"
+                                  borderColor="chakra-border-color"
+                                  borderLeftWidth="4px"
+                                  borderLeftColor="accent"
+                                  bg="chakra-body-bg"
+                                  boxShadow="sm"
+                                >
+                                  <Text fontWeight="semibold" fontSize="sm" color="chakra-subtle-text" mb={2}>
+                                    Study
+                                  </Text>
+                                  <Text fontSize="md" mb={3}>{path.study}</Text>
+                                  <Text fontWeight="semibold" fontSize="sm" color="chakra-subtle-text" mb={2}>
+                                    Initial target job
+                                  </Text>
+                                  <Text fontSize="md" mb={3}>{path.initialJob}</Text>
+                                  <Text fontWeight="semibold" fontSize="sm" color="chakra-subtle-text" mb={2}>
+                                    Ultimate job
+                                  </Text>
+                                  <Text fontSize="md" mb={path.rationale ? 2 : 0}>{path.ultimateJob}</Text>
+                                  {path.rationale && (
+                                    <Text fontSize="sm" color="chakra-subtle-text" fontStyle="italic">
+                                      {path.rationale}
+                                    </Text>
+                                  )}
+                                </Box>
+                              ))}
+                            </VStack>
+                          )}
+                        </>
+                      )}
+                    </TabPanel>
+                    <TabPanel px={0}>
+                      {matchSkillsPayload.length === 0 ? (
+                        <Text color="chakra-subtle-text" fontSize="sm">
+                          Move skills into the buckets above to see matching careers.
+                        </Text>
+                      ) : occupationsLoading ? (
+                        <HStack spacing={2}>
+                          <Spinner size="sm" />
+                          <Text color="chakra-subtle-text" fontSize="sm">Loading careers...</Text>
+                        </HStack>
+                      ) : topOccupations.length === 0 ? (
+                        <Text color="chakra-subtle-text" fontSize="sm">
+                          No occupations match the selected skills.
+                        </Text>
+                      ) : (
+                        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                          {topOccupations.map((occ) => (
+                            <Box
+                              key={occ.nocCode}
+                              as="button"
+                              type="button"
+                              textAlign="left"
+                              p={4}
+                              borderWidth="1px"
+                              borderRadius="lg"
+                              borderColor="chakra-border-color"
+                              borderLeftWidth="4px"
+                              borderLeftColor="accent"
+                              bg="chakra-body-bg"
+                              boxShadow="sm"
+                              cursor="pointer"
+                              onClick={() => openOccupationDetail(occ)}
+                              _hover={{ bg: 'blackAlpha.50', _dark: { bg: 'whiteAlpha.50' } }}
+                            >
+                              <Text fontWeight="semibold" fontSize="md">
+                                {occ.name}
                               </Text>
-                            )}
-                          </Box>
-                        ))}
-                      </SimpleGrid>
-                    </Box>
-                  ))}
-                </VStack>
+                              {occ.matchScore != null && (
+                                <Text fontSize="xs" color="chakra-subtle-text" mt={1}>
+                                  Match: {occ.matchScore.toFixed(2)}
+                                </Text>
+                              )}
+                              {occ.aiRelevanceFromSkills != null && getAiRelevanceLabel(occ.aiRelevanceFromSkills) && (
+                                <Text fontSize="xs" mt={1} color={getAiBandColor(occ.aiRelevanceFromSkills)}>
+                                  {getAiRelevanceLabel(occ.aiRelevanceFromSkills)}
+                                </Text>
+                              )}
+                            </Box>
+                          ))}
+                        </SimpleGrid>
+                      )}
+                    </TabPanel>
+                  </TabPanels>
+                </Tabs>
               )}
             </Box>
           </VStack>

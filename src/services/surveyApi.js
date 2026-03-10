@@ -81,7 +81,7 @@ export async function getReportPayload(sessionId) {
 }
 
 /**
- * Get occupations scored by selected skill IDs.
+ * Get occupations scored by selected skill IDs (legacy; no bucket or dimension fit).
  * With groupByCategory true, returns { groups: [ { categoryKey, categoryLabel, occupations } ] }.
  * Otherwise returns flat [{ nocCode, name, matchScore, categoryKey, categoryLabel }].
  */
@@ -96,11 +96,57 @@ export async function getOccupationsBySkillIds(skillIds, groupByCategory = true)
 }
 
 /**
+ * Match occupations by skills (with bucket and applicability) and dimension scores.
+ * skills: [{ id, bucket: 'low'|'medium'|'high', applicability }], dimensionScores: { traits: [...], values: [...] }.
+ * Returns { groups } when groupByCategory true; each occupation has matchScore and aiRelevanceFromSkills.
+ */
+export async function matchOccupations(skills, dimensionScores, groupByCategory = true) {
+  if (!Array.isArray(skills) || skills.length === 0) {
+    return groupByCategory ? { groups: [] } : [];
+  }
+  return request('POST', '/occupations/match', {
+    skills,
+    dimensionScores: dimensionScores || { traits: [], values: [] },
+    groupBy: groupByCategory ? 'category' : undefined,
+  });
+}
+
+/**
  * Get full occupation by NOC code (for detail modal).
  */
 export async function getOccupationByNocCode(nocCode) {
   if (!nocCode) throw new Error('nocCode is required');
   return request('GET', `/occupations/${encodeURIComponent(nocCode)}`);
+}
+
+/**
+ * Get app config for the frontend. Required for Careers page loading state.
+ */
+export async function getAppConfig() {
+  return request('GET', '/config');
+}
+
+/**
+ * Generate career paths via LLM.
+ * Time-investment buckets: high = user will invest a lot; low = minimal. High-bucket skills are weighted much more.
+ * @param {string} sessionId
+ * @param {Array<{ id: string, bucket: 'high'|'medium'|'low' }>} skills - Selected skills with bucket per skill.
+ * @returns {Promise<{ paths: Array<{ study: string, initialJob: string, ultimateJob: string, rationale?: string }> }>}
+ */
+export async function postCareerPaths(sessionId, skills) {
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+    throw new Error('sessionId is required');
+  }
+  if (!Array.isArray(skills)) {
+    throw new Error('skills must be an array of { id, bucket }');
+  }
+  const valid = skills.filter((s) => s && typeof s.id === 'string' && s.id.trim() !== '' && ['high', 'medium', 'low'].includes(s.bucket));
+  if (valid.length === 0 && skills.length > 0) {
+    throw new Error('Each skill must have id and bucket (high, medium, or low).');
+  }
+  return request('POST', `/sessions/${encodeURIComponent(sessionId)}/career-paths`, {
+    skills: valid,
+  });
 }
 
 /**
