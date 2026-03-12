@@ -219,7 +219,7 @@ export default function TriangleQuestion({ question, value, onChange }) {
           {question.title}
         </Text>
         <Text mt={1} fontSize="sm" color="chakra-subtle-text" fontStyle="italic">
-          Drag the ball to the position that best represents you.
+          Drag the ball to the spot that fits your answer.
         </Text>
         {question.prompt && (
           <Text mt={2} fontSize="md" color="chakra-subtle-text" lineHeight="tall">
@@ -248,15 +248,14 @@ export default function TriangleQuestion({ question, value, onChange }) {
         onTouchStart={(e) => {
           if (e.currentTarget.contains(e.target)) e.preventDefault();
         }}
-        aria-label="Drag the ball to your position on the triangle"
+        aria-label="Drag the ball to the spot that fits your answer"
       >
         <svg
           ref={svgRef}
           width="100%"
-          height="auto"
           viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
           preserveAspectRatio="xMidYMid meet"
-          style={{ display: 'block', maxHeight: '420px' }}
+          style={{ display: 'block', height: 'auto', maxHeight: '420px' }}
         >
           <defs>
             <linearGradient id="triangle-fill" x1="0%" y1="0%" x2="0%" y2="100%">

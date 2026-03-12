@@ -28,11 +28,12 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { SkillDetailsContent } from '../SkillDetailsContent';
 import { getReport, getAppConfig, matchOccupations, postCareerPaths, getOccupationByNocCode } from '../../services/surveyApi';
+import { getBandForScore, getTileColorForBand } from '../../utils/bandsRanges';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
@@ -114,18 +115,13 @@ function shortDescription(description) {
   };
 }
 
-function skillMatchDisplay(applicability, maxApplicability) {
-  if (applicability == null || maxApplicability == null || maxApplicability <= 0) return { text: '-', band: null };
-  const ratio = Math.min(1, applicability / maxApplicability);
-  const score = 1 + ratio * 4;
+/** Applicability is on absolute 1-5 scale (0 = no link). Band from config (bandsRanges). */
+function skillMatchDisplay(applicability, bands) {
+  if (applicability == null || applicability <= 0) return { text: '-', band: null };
+  const score = Math.max(1, Math.min(5, applicability));
   const text = `${(Math.round(score * 10) / 10).toFixed(1)}/5`;
-  let band = null;
-  if (score >= 4.2) band = 'Very High';
-  else if (score >= 3.4) band = 'High';
-  else if (score >= 2.6) band = 'Medium';
-  else if (score >= 1.8) band = 'Low';
-  else band = 'Very Low';
-  return { text, band };
+  const bandObj = getBandForScore(score, bands);
+  return { text, band: bandObj ? bandObj.label : null };
 }
 
 function trendLabel(aiTrend) {
@@ -144,6 +140,7 @@ function SkillDefinitionContent({
   expanded,
   onShowMore,
   structuralDimensionMeta,
+  bandsRanges,
 }) {
   const sectionProps = {
     p: 4,
@@ -155,7 +152,7 @@ function SkillDefinitionContent({
     bg: 'blackAlpha.30',
     _dark: { bg: 'whiteAlpha.50' },
   };
-  const match = skillMatchDisplay(skill.applicability, maxApplicability);
+  const match = skillMatchDisplay(skill.applicability, bandsRanges);
   const label = (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
   const { short: shortDesc, hasMore } = shortDescription(skill.description);
   const hasExtraSections = !!(skill.ai_future_rationale || skill.how_measured_or_observed || (Array.isArray(skill.question_hints) && skill.question_hints.length > 0) || (skill.structural_scores && Object.keys(skill.structural_scores).length > 0));
@@ -168,6 +165,7 @@ function SkillDefinitionContent({
           skill={skill}
           maxApplicability={maxApplicability}
           structuralDimensionMeta={structuralDimensionMeta ?? []}
+          bandsRanges={bandsRanges}
         />
         <Button
           variant="link"
@@ -257,8 +255,9 @@ function SkillDefinitionContent({
 }
 
 // All tiles use PageHero background; only the top indicator shows compatibility (red / yellow / green).
+// Color from config bands (bandsRanges). If no bands, use gray.
 // _dark: explicit color so tile title stays visible; only side/bottom border so top indicator is not overwritten.
-function getSkillTileColor(applicability, maxApplicability) {
+function getSkillTileColor(applicability, bands) {
   const base = {
     bg: 'hero-bg',
     color: 'hero-title',
@@ -269,12 +268,9 @@ function getSkillTileColor(applicability, maxApplicability) {
       borderBottomColor: 'hero-border',
     },
   };
-  if (maxApplicability == null || maxApplicability <= 0) {
-    return { ...base, topIndicatorColor: 'red.500' };
-  }
-  const ratio = Math.min(1, (applicability ?? 0) / maxApplicability);
-  const topIndicatorColor =
-    ratio <= 1 / 3 ? 'red.500' : ratio <= 2 / 3 ? 'yellow.500' : 'green.500';
+  const score = applicability != null && applicability > 0 ? applicability : 0;
+  const band = getBandForScore(score, bands);
+  const topIndicatorColor = getTileColorForBand(band?.id);
   return { ...base, topIndicatorColor };
 }
 
@@ -404,21 +400,25 @@ export default function RecommendationsPage() {
   const resolvedSessionId =
     urlSessionId ?? location.state?.sessionId ?? sessionStorage.getItem(RESULTS_SESSION_KEY);
 
-  function computeRecommendedAllocation(skills) {
+  const initialAllocationDoneRef = useRef(false);
+
+  const bands = appConfig?.bandsRanges ?? null;
+
+  function computeRecommendedAllocation(skills, bands) {
     const list = skills || [];
-    const maxApp = list.length ? Math.max(...list.map((s) => s.applicability ?? 0), 0) : 0;
     const highBucket = [];
     const mediumBucket = [];
     const lowBucket = [];
     const poolList = [];
     list.forEach((s) => {
       const copy = { ...s };
-      const compatRatio = compatibilityRatio(s.applicability, maxApp);
+      const app = s.applicability != null && s.applicability > 0 ? s.applicability : 0;
+      const band = getBandForScore(app, bands);
+      const highCompat = band && (band.id === 'very_high' || band.id === 'high');
+      const mediumCompat = band && band.id === 'medium';
+      const lowCompat = band && band.id === 'low';
       const ai = aiFutureScore(s);
       const highAi = ai != null && ai >= 2 / 3;
-      const highCompat = compatRatio > 2 / 3;
-      const mediumCompat = compatRatio > 1 / 3 && compatRatio <= 2 / 3;
-      const lowCompat = compatRatio <= 1 / 3;
       if (highCompat && highAi) {
         highBucket.push(copy);
       } else if (highAi && mediumCompat) {
@@ -437,11 +437,8 @@ export default function RecommendationsPage() {
     setError(null);
     try {
       const data = await getReport(sid);
+      initialAllocationDoneRef.current = false;
       setReport(data);
-      const skills = data?.skillDevelopmentRoadmap ?? [];
-      const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(skills);
-      setPool(poolList);
-      setBuckets(initialBuckets);
     } catch (err) {
       setError(err.message || 'We couldn\'t load your careers. Try again or start a new discovery.');
       setReport(null);
@@ -455,10 +452,10 @@ export default function RecommendationsPage() {
     const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
     const byId = new Map(all.map((s) => [s.id, s]));
     const ordered = skills.map((s) => byId.get(s.id) ?? { ...s }).filter(Boolean);
-    const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(ordered.length ? ordered : all);
+    const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(ordered.length ? ordered : all, bands);
     setPool(poolList);
     setBuckets(initialBuckets);
-  }, [report, pool, buckets]);
+  }, [report, pool, buckets, bands]);
 
   const handleCleanBuckets = useCallback(() => {
     const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
@@ -485,6 +482,18 @@ export default function RecommendationsPage() {
         setAppConfig(null);
       });
   }, []);
+
+  useEffect(() => {
+    if (!report || !bands || initialAllocationDoneRef.current) return;
+    const skills = report?.skillDevelopmentRoadmap ?? [];
+    const { pool: poolList, buckets: initialBuckets } = computeRecommendedAllocation(skills, bands);
+    setPool(poolList);
+    setBuckets(initialBuckets);
+    initialAllocationDoneRef.current = true;
+  }, [report, bands]);
+  useEffect(() => {
+    if (!resolvedSessionId) initialAllocationDoneRef.current = false;
+  }, [resolvedSessionId]);
 
   const maxApplicability = useMemo(() => {
     const all = [...pool, ...buckets.low, ...buckets.medium, ...buckets.high];
@@ -664,7 +673,7 @@ export default function RecommendationsPage() {
   }, [resolvedSessionId, matchSkillsPayload]);
 
   const renderSkillTile = useCallback((skill, source) => {
-    const colorScheme = getSkillTileColor(skill.applicability, maxApplicability);
+    const colorScheme = getSkillTileColor(skill.applicability, bands);
     const label = (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
     const fromPool = source === 'pool';
     const aiScore = aiFutureScore(skill);
@@ -749,7 +758,7 @@ export default function RecommendationsPage() {
       </Menu>
       </Box>
     );
-  }, [maxApplicability, handleDragStart, handleMoveTo, openSkillDefinition, isTouchDevice]);
+  }, [bands, handleDragStart, handleMoveTo, openSkillDefinition, isTouchDevice]);
 
   const renderBucket = useCallback((bucketKey) => {
     const list = buckets[bucketKey] || [];
@@ -1138,6 +1147,7 @@ export default function RecommendationsPage() {
                 expanded={skillDefExpanded}
                 onShowMore={() => setSkillDefExpanded((e) => !e)}
                 structuralDimensionMeta={report?.structuralDimensionMeta}
+                bandsRanges={bands}
               />
             )}
           </ModalBody>

@@ -6,6 +6,7 @@
 
 import { Box, Text, useBreakpointValue, useColorModeValue } from '@chakra-ui/react';
 import { ResponsiveRadar } from '@nivo/radar';
+import { getBandForScore } from '../utils/bandsRanges';
 
 const SCALE_MIN = 1;
 const SCALE_MAX = 5;
@@ -54,13 +55,6 @@ function aiFutureScore(skill) {
   return null;
 }
 
-function normalizeApplicability(applicability, maxApplicability) {
-  if (applicability == null || applicability <= 0) return 0;
-  if (maxApplicability == null || maxApplicability <= 0) return 0;
-  const v = applicability / maxApplicability;
-  return Math.min(1, Math.max(0, v));
-}
-
 function shortLabel(name) {
   if (!name || name.length <= MAX_LABEL_LEN) return name;
   return name.slice(0, MAX_LABEL_LEN - 1).trim() + '\u2026';
@@ -78,11 +72,15 @@ function roundTo1(num) {
   return (Math.round(n * 10) / 10).toFixed(1);
 }
 
-/** Band label for a 1-5 match score (e.g. "Very High"). */
-function matchBandForValue(score) {
+/** Band label for a 1-5 match score. When bands from config are provided, use those. */
+function matchBandForValue(score, bands) {
+  if (bands != null && Array.isArray(bands) && bands.length > 0) {
+    const band = getBandForScore(Number(score), bands);
+    return band ? band.label : null;
+  }
   const s = Number(score);
   if (Number.isNaN(s)) return null;
-  if (s >= 4.2) return 'Very High';
+  if (s >= 4.5) return 'Very High';
   if (s >= 3.4) return 'High';
   if (s >= 2.6) return 'Medium';
   if (s >= 1.8) return 'Low';
@@ -100,19 +98,25 @@ function trendLabel(aiTrend) {
   return aiTrend;
 }
 
+/** Neutral "AI future fit" on 1-5 scale when skill has no ai_future_score or structural_scores (so radar matches table). */
+const NEUTRAL_AI_SCORE = 3;
+
 /**
  * Nivo data: one object per skill with subject + keys for each series.
- * Only includes skills we can score (API ai_future_score or full structural_scores); no guesswork.
+ * Uses pre-scaled values from skill calculation: applicability is already 1-5 from the API;
+ * AI future fit is 0-1 from the API, mapped once to 1-5 for display. No extra scaling.
+ * Subject must be unique per skill (Nivo uses it as key); duplicates get " (2)", " (3)" etc.
  */
-function buildChartData(skills, maxApplicability) {
-  const scoreable = skills.filter(
-    (s) => typeof s.ai_future_score === 'number' || hasFullStructuralScores(s)
-  );
-  return scoreable.map((s) => {
-    const myMatch = normalizeApplicability(s.applicability, maxApplicability);
+function buildChartData(skills, _minApplicability, _maxApplicability, bands) {
+  const raw = skills.map((s) => {
+    const applicability = s.applicability != null && s.applicability > 0 ? Number(s.applicability) : null;
+    const matchScaled =
+      applicability != null ? Math.max(SCALE_MIN, Math.min(SCALE_MAX, applicability)) : SCALE_MIN;
     const aiFuture = aiFutureScore(s);
-    const matchScaled = toScale5(myMatch);
-    const aiScaled = toScale5(aiFuture);
+    const aiScaled =
+      aiFuture != null && !Number.isNaN(aiFuture)
+        ? toScale5(aiFuture)
+        : Math.max(SCALE_MIN, Math.min(SCALE_MAX, NEUTRAL_AI_SCORE));
     const subject = (s.short_label && s.short_label.trim()) ? s.short_label.trim() : shortLabel(s.name);
     return {
       subject,
@@ -121,9 +125,20 @@ function buildChartData(skills, maxApplicability) {
       'AI future fit': aiScaled - SCALE_MIN,
       displayMatch: matchScaled,
       displayFuture: aiScaled,
-      matchBand: matchBandForValue(matchScaled),
+      matchBand: matchBandForValue(matchScaled, bands),
       trend: trendLabel(s.ai_trend),
     };
+  });
+  const subjectCount = new Map();
+  raw.forEach((row) => subjectCount.set(row.subject, (subjectCount.get(row.subject) ?? 0) + 1));
+  const subjectOccurrence = new Map();
+  return raw.map((row) => {
+    const base = row.subject;
+    const isDuplicate = (subjectCount.get(base) ?? 0) > 1;
+    const occurrence = subjectOccurrence.get(base) ?? 0;
+    subjectOccurrence.set(base, occurrence + 1);
+    const subject = isDuplicate && occurrence > 0 ? `${base} (${occurrence + 1})` : base;
+    return { ...row, subject };
   });
 }
 
@@ -201,22 +216,23 @@ function GridLabelTwoLines({ id, anchor, x, y, animated }) {
   const fill = useColorModeValue('#475569', '#94a3b8');
   const [line1, line2] = splitLabel(id);
   const textAnchor = anchor === 'start' ? 'start' : anchor === 'end' ? 'end' : 'middle';
+  const transformStr = typeof animated?.transform === 'string' ? animated.transform : `translate(${x}, ${y})`;
   return (
-    <g transform={animated?.transform ?? undefined} style={{ transformOrigin: `${x}px ${y}px` }}>
+    <g transform={transformStr} style={{ transformOrigin: `${x}px ${y}px` }}>
       <text
-        x={x}
-        y={y}
+        x={0}
+        y={0}
         textAnchor={textAnchor}
         fill={fill}
         fontSize={10}
         fontWeight={500}
         style={{ shapeRendering: 'geometricPrecision' }}
       >
-        <tspan x={x} dy={0}>
+        <tspan x={0} dy={0}>
           {line1}
         </tspan>
         {line2 ? (
-          <tspan x={x} dy={LINE_HEIGHT}>
+          <tspan x={0} dy={LINE_HEIGHT}>
             {line2}
           </tspan>
         ) : null}
@@ -229,8 +245,8 @@ const CHART_MARGIN_BASE = { top: 0, right: 24, bottom: 24, left: 24 };
 /** Top margin on desktop so dimension labels don't overlap the caption above (match DimensionsRadarChart). */
 const CHART_MARGIN_MD = { top: 48, right: 40, bottom: 40, left: 40 };
 
-export default function SkillsRadarChart({ skills, maxApplicability }) {
-  const data = buildChartData(skills, maxApplicability);
+export default function SkillsRadarChart({ skills, minApplicability, maxApplicability, bandsRanges }) {
+  const data = buildChartData(skills, minApplicability, maxApplicability, bandsRanges);
   const subjectToFullName = Object.fromEntries(data.map((d) => [d.subject, d.fullName]));
 
   const chartMargin = useBreakpointValue({ base: CHART_MARGIN_BASE, md: CHART_MARGIN_MD });
@@ -296,8 +312,10 @@ export default function SkillsRadarChart({ skills, maxApplicability }) {
             'dots',
           ]}
           sliceTooltip={({ index }) => {
-            const fullName = subjectToFullName[index] ?? index;
-            const row = data[index];
+            const row =
+              data.find((d) => d.subject === index) ??
+              (typeof index === 'number' && index >= 0 && index < data.length ? data[index] : null);
+            const fullName = subjectToFullName[index] ?? subjectToFullName[String(index)] ?? row?.fullName ?? index;
             const matchStr =
               row?.displayMatch != null
                 ? row.matchBand

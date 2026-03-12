@@ -56,7 +56,7 @@ function HomePage() {
               Built for Tomorrow
             </Heading>
             <Text fontSize={{ base: 'md', md: 'xl' }} color="hero-tagline" fontWeight="semibold" data-testid="home-hero-tagline">
-              Find your strengths. See where they take you.
+              Find your strengths. See where it takes you.
             </Text>
             <Text fontSize={{ base: 'sm', md: 'md' }} color="chakra-subtle-text" maxW="2xl" lineHeight="tall">
               Discover your strengths, explore professions and skills, and see where to invest your time. No sign-up. No one right path.

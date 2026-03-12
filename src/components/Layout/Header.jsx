@@ -67,32 +67,34 @@ function Header() {
             data-testid="color-mode-toggle"
           />
           <Tooltip label="Select language" hasArrow>
-            <Menu>
-              <MenuButton
-                as={Button}
-                leftIcon={<Box as="span" lineHeight={0}><Languages size={20} strokeWidth={2} /></Box>}
-                rightIcon={<ChevronDownIcon />}
-                variant="ghost"
-                size="lg"
-                fontWeight="normal"
-                data-testid="language-dropdown"
-                aria-label="Select language"
-              >
-                {currentLocaleLabel}
-              </MenuButton>
-            <MenuList>
-              {LOCALES.map((l) => (
-                <MenuItem
-                  key={l.value}
-                  onClick={() => setLanguage(l.value)}
-                  fontWeight={locale === l.value ? 'bold' : 'normal'}
-                  data-testid={`language-option-${l.value}`}
+            <Box as="span" display="inline-block">
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  leftIcon={<Box as="span" lineHeight={0}><Languages size={20} strokeWidth={2} /></Box>}
+                  rightIcon={<ChevronDownIcon />}
+                  variant="ghost"
+                  size="lg"
+                  fontWeight="normal"
+                  data-testid="language-dropdown"
+                  aria-label="Select language"
                 >
-                  {l.label}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </Menu>
+                  {currentLocaleLabel}
+                </MenuButton>
+                <MenuList>
+                  {LOCALES.map((l) => (
+                    <MenuItem
+                      key={l.value}
+                      onClick={() => setLanguage(l.value)}
+                      fontWeight={locale === l.value ? 'bold' : 'normal'}
+                      data-testid={`language-option-${l.value}`}
+                    >
+                      {l.label}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </Menu>
+            </Box>
           </Tooltip>
           <Menu>
             <MenuButton

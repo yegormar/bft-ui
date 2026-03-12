@@ -8,6 +8,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useMemo } from 'react';
+import { getBandForScore } from '../utils/bandsRanges';
 
 /** Dimension keys in display order, with labels (match ai_skills_ranking_model.json). */
 const STRUCTURAL_DIMENSIONS = [
@@ -37,21 +38,31 @@ function trendLabel(aiTrend) {
   return aiTrend;
 }
 
-function applicabilityScoreDisplay(applicability, maxApplicability) {
-  if (applicability == null || applicability <= 0) return '-';
-  if (maxApplicability == null || maxApplicability <= 0) return '-';
-  const ratio = Math.min(1, applicability / maxApplicability);
-  return `${roundTo1(1 + ratio * 4)}/5`;
+/** Raw score 1-5 from API (no UI scaling). */
+function rawScore(applicability) {
+  if (applicability == null || applicability <= 0) return null;
+  return Math.max(1, Math.min(5, applicability));
 }
 
-function matchScoreBandLabel(applicability, maxApplicability) {
-  if (applicability == null || applicability <= 0 || maxApplicability == null || maxApplicability <= 0) return null;
-  const ratio = Math.min(1, applicability / maxApplicability);
-  const s = 1 + ratio * 4;
-  if (s >= 4.2) return 'Very High';
-  if (s >= 3.4) return 'High';
-  if (s >= 2.6) return 'Medium';
-  if (s >= 1.8) return 'Low';
+/** Display applicability as from API (1-5). No scaling. */
+function applicabilityScoreDisplay(applicability) {
+  if (applicability == null || applicability <= 0) return '-';
+  const score = Math.max(1, Math.min(5, applicability));
+  return `${roundTo1(score)}/5`;
+}
+
+/** Band label from API value only; bands config for labels when provided. */
+function matchScoreBandLabel(applicability, bands) {
+  const score = rawScore(applicability);
+  if (score == null) return null;
+  if (bands != null && Array.isArray(bands) && bands.length > 0) {
+    const band = getBandForScore(score, bands);
+    return band ? band.label : null;
+  }
+  if (score >= 4.5) return 'Very High';
+  if (score >= 3.4) return 'High';
+  if (score >= 2.6) return 'Medium';
+  if (score >= 1.8) return 'Low';
   return 'Very Low';
 }
 
@@ -71,7 +82,7 @@ function dimensionHintText(dimMeta) {
  * Full skill details (description, at a glance, AI rationale, how measured, question hints, structural scores).
  * Used on Skills page and in the Careers skill definition modal (expanded "More" view).
  */
-export function SkillDetailsContent({ skill, maxApplicability, structuralDimensionMeta = [] }) {
+export function SkillDetailsContent({ skill, minApplicability, maxApplicability, structuralDimensionMeta = [], bandsRanges }) {
   const scores = skill?.structural_scores || {};
   const metaByKey = useMemo(() => {
     const map = {};
@@ -79,9 +90,9 @@ export function SkillDetailsContent({ skill, maxApplicability, structuralDimensi
     return map;
   }, [structuralDimensionMeta]);
 
-  const matchDisplay = applicabilityScoreDisplay(skill?.applicability, maxApplicability);
+  const matchDisplay = applicabilityScoreDisplay(skill?.applicability);
   const matchNum = matchDisplay === '-' ? matchDisplay : matchDisplay.replace('/5', '');
-  const matchBand = matchScoreBandLabel(skill?.applicability, maxApplicability);
+  const matchBand = matchScoreBandLabel(skill?.applicability, bandsRanges);
 
   const sectionProps = {
     p: 4,

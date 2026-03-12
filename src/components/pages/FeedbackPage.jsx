@@ -12,8 +12,7 @@ import { useCallback, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { submitFeedback } from '../../services/surveyApi';
-
-const FEEDBACK_STORAGE_KEY = 'bft_feedback_submitted';
+import { setVersionedFlag, FEEDBACK_FLAG_KEY } from '../../utils/versionedStorage';
 
 const RATING_LABELS = {
   1: 'Not for me',
@@ -69,9 +68,7 @@ export default function FeedbackPage() {
       setSubmitting(true);
       try {
         await submitFeedback({ rating, improve: improve.trim() || undefined, good: good.trim() || undefined });
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(FEEDBACK_STORAGE_KEY, 'true');
-        }
+        setVersionedFlag(FEEDBACK_FLAG_KEY);
         setSubmitted(true);
       } catch (err) {
         setError(err.message || 'Something went wrong. You can try again.');

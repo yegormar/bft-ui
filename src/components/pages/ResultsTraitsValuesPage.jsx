@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Checkbox,
   Container,
   Heading,
   HStack,
@@ -30,6 +31,7 @@ import DimensionsRadarChart from '../DimensionsRadarChart';
 import { getReport } from '../../services/surveyApi';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
+const TUTORIAL_ACK_KEY = 'bft_traits_values_tutorial_ack';
 
 const SORT_DESC = 'desc';
 const SORT_ASC = 'asc';
@@ -179,6 +181,11 @@ export default function ResultsTraitsValuesPage() {
   const [sortOrderValues, setSortOrderValues] = useState(SORT_DESC);
   const [selectedDimension, setSelectedDimension] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
+  const [tutorialAcked, setTutorialAcked] = useState(() =>
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem(TUTORIAL_ACK_KEY) === '1'
+  );
+  const [tutorialAptitudesRead, setTutorialAptitudesRead] = useState(false);
+  const [tutorialValuesRead, setTutorialValuesRead] = useState(false);
   const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
 
   const [searchParams] = useSearchParams();
@@ -349,6 +356,109 @@ export default function ResultsTraitsValuesPage() {
                 <Text color="red.500">{error}</Text>
                 <Button as={RouterLink} to="/discovery" colorScheme="brand" size="lg" px={8}>
                   Start discovery
+                </Button>
+              </VStack>
+            </Box>
+          </Container>
+        </Box>
+      </>
+    );
+  }
+
+  const handleTutorialAcknowledge = () => {
+    try {
+      sessionStorage.setItem(TUTORIAL_ACK_KEY, '1');
+    } catch (_) {}
+    setTutorialAcked(true);
+  };
+
+  const tutorialBothChecked = tutorialAptitudesRead && tutorialValuesRead;
+
+  if (!tutorialAcked) {
+    return (
+      <>
+        <PageHero title="Traits and Values" tagline="Your calculated dimensions" />
+        <Box as="main" py={8} px={4} bg="chakra-body-bg" data-testid="page-results-traits-values-tutorial">
+          <Container maxW="2xl" centerContent>
+            <Box
+              p={6}
+              borderRadius="lg"
+              borderWidth="1px"
+              borderColor="chakra-border-color"
+              bg="chakra-body-bg"
+              boxShadow="sm"
+              w="full"
+              maxW="lg"
+            >
+              <VStack align="stretch" spacing={6}>
+                <Heading size="md" color="chakra-body-text">
+                  Quick heads up
+                </Heading>
+                <Text fontSize="sm" color="chakra-subtle-text">
+                  Before you look at your scores, here's what the numbers mean.
+                </Text>
+
+                <Box
+                  p={4}
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor="chakra-border-color"
+                  borderLeftWidth="4px"
+                  borderLeftColor="accent"
+                  bg="blackAlpha.30"
+                  _dark={{ bg: 'whiteAlpha.50' }}
+                >
+                  <Checkbox
+                    size="lg"
+                    colorScheme="brand"
+                    isChecked={tutorialAptitudesRead}
+                    onChange={(e) => setTutorialAptitudesRead(e.target.checked)}
+                    data-testid="tutorial-aptitudes-checkbox"
+                  >
+                    <Text as="span" fontSize="sm" color="chakra-body-text" fontWeight="medium">
+                      Aptitudes
+                    </Text>
+                  </Checkbox>
+                  <Text mt={2} fontSize="sm" lineHeight="tall" color="chakra-body-text" pl={8}>
+                    No IQ test. Scores come from your choices. Higher score = you lean that way more (e.g. high Logical reasoning means you tend to use logic when you solve problems).
+                  </Text>
+                </Box>
+
+                <Box
+                  p={4}
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor="chakra-border-color"
+                  borderLeftWidth="4px"
+                  borderLeftColor="accent"
+                  bg="blackAlpha.30"
+                  _dark={{ bg: 'whiteAlpha.50' }}
+                >
+                  <Checkbox
+                    size="lg"
+                    colorScheme="brand"
+                    isChecked={tutorialValuesRead}
+                    onChange={(e) => setTutorialValuesRead(e.target.checked)}
+                    data-testid="tutorial-values-checkbox"
+                  >
+                    <Text as="span" fontSize="sm" color="chakra-body-text" fontWeight="medium">
+                      Values
+                    </Text>
+                  </Checkbox>
+                  <Text mt={2} fontSize="sm" lineHeight="tall" color="chakra-body-text" pl={8}>
+                    Values show what matters more to you. High score = that thing is really important (e.g. high Financial success means money matters a lot to you).
+                  </Text>
+                </Box>
+
+                <Button
+                  colorScheme="brand"
+                  size="lg"
+                  w="full"
+                  isDisabled={!tutorialBothChecked}
+                  onClick={handleTutorialAcknowledge}
+                  data-testid="tutorial-acknowledge-btn"
+                >
+                  Acknowledge
                 </Button>
               </VStack>
             </Box>

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import PageHero from '../Layout/PageHero';
 import { getReport } from '../../services/surveyApi';
+import { getVersionedFlag, FEEDBACK_FLAG_KEY } from '../../utils/versionedStorage';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
@@ -202,8 +203,7 @@ export default function ResultsPage() {
     sessionStorage.setItem(RESULTS_SESSION_KEY, resolvedSessionId);
   }
 
-  const hasGivenFeedback =
-    typeof localStorage !== 'undefined' && localStorage.getItem('bft_feedback_submitted') === 'true';
+  const hasGivenFeedback = getVersionedFlag(FEEDBACK_FLAG_KEY);
 
   return (
     <>

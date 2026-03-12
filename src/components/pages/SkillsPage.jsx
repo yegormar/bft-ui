@@ -24,7 +24,8 @@ import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from 'r
 import PageHero from '../Layout/PageHero';
 import SkillsRadarChart from '../SkillsRadarChart';
 import { SkillDetailsContent } from '../SkillDetailsContent';
-import { getReport } from '../../services/surveyApi';
+import { getReport, getAppConfig } from '../../services/surveyApi';
+import { getBandForScore } from '../../utils/bandsRanges';
 
 const RESULTS_SESSION_KEY = 'bft_results_session_id';
 
@@ -46,34 +47,45 @@ function chartLabel(skill) {
   return (skill.short_label && skill.short_label.trim()) ? skill.short_label.trim() : skill.name;
 }
 
-/** Band label for a 1-5 match score. Used in list display. */
-function matchScoreBandLabel(applicability, maxApplicability) {
-  if (applicability == null || applicability <= 0 || maxApplicability == null || maxApplicability <= 0) return null;
-  const ratio = Math.min(1, applicability / maxApplicability);
-  const s = 1 + ratio * 4;
-  if (s >= 4.2) return 'Very High';
-  if (s >= 3.4) return 'High';
-  if (s >= 2.6) return 'Medium';
-  if (s >= 1.8) return 'Low';
+/** Raw score 1-5 from API (no UI scaling). Used only for band lookup. */
+function rawScore(applicability) {
+  if (applicability == null || applicability <= 0) return null;
+  return Math.max(1, Math.min(5, applicability));
+}
+
+/** Band label for a 1-5 match score. Uses API value only; bands config for labels when provided. */
+function matchScoreBandLabel(applicability, bands) {
+  const score = rawScore(applicability);
+  if (score == null) return null;
+  if (bands != null && Array.isArray(bands) && bands.length > 0) {
+    const band = getBandForScore(score, bands);
+    return band ? band.label : null;
+  }
+  if (score >= 4.5) return 'Very High';
+  if (score >= 3.4) return 'High';
+  if (score >= 2.6) return 'Medium';
+  if (score >= 1.8) return 'Low';
   return 'Very Low';
 }
 
-function applicabilityScoreDisplay(applicability, maxApplicability) {
+/** Display applicability as from API (1-5). No scaling. */
+function applicabilityScoreDisplay(applicability) {
   if (applicability == null || applicability <= 0) return '-';
-  if (maxApplicability == null || maxApplicability <= 0) return '-';
-  const ratio = Math.min(1, applicability / maxApplicability);
-  return `${(Math.round((1 + ratio * 4) * 10) / 10).toFixed(1)}/5`;
+  const score = Math.max(1, Math.min(5, applicability));
+  return `${(Math.round(score * 10) / 10).toFixed(1)}/5`;
 }
 
 export default function SkillsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [report, setReport] = useState(null);
+  const [appConfig, setAppConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState(SORT_DESC);
   const [selectedSkill, setSelectedSkill] = useState(null);
   const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
+  const bands = appConfig?.bandsRanges ?? null;
 
   const [searchParams] = useSearchParams();
   const urlSessionId = searchParams.get('sessionId');
@@ -95,6 +107,10 @@ export default function SkillsPage() {
   }, []);
 
   useEffect(() => {
+    getAppConfig().then((data) => setAppConfig(data)).catch(() => setAppConfig(null));
+  }, []);
+
+  useEffect(() => {
     if (resolvedSessionId) {
       fetchReport(resolvedSessionId);
     } else {
@@ -103,9 +119,12 @@ export default function SkillsPage() {
   }, [resolvedSessionId, fetchReport]);
 
   const rawSkills = report?.skillDevelopmentRoadmap ?? [];
-  const maxApplicability = useMemo(() => {
-    if (rawSkills.length === 0) return 0;
-    return Math.max(...rawSkills.map((s) => s.applicability ?? 0), 0);
+  const { minApplicability, maxApplicability } = useMemo(() => {
+    if (rawSkills.length === 0) return { minApplicability: 0, maxApplicability: 0 };
+    const vals = rawSkills.map((s) => s.applicability ?? 0).filter((v) => v > 0);
+    const min = vals.length ? Math.min(...vals) : 0;
+    const max = vals.length ? Math.max(...vals) : 0;
+    return { minApplicability: min, maxApplicability: max };
   }, [rawSkills]);
 
   const sortedSkills = useMemo(() => {
@@ -237,7 +256,7 @@ export default function SkillsPage() {
                   <Box as="span" w={3} h={3} borderRadius="sm" bg="red.400" flexShrink={0} />
                   <Text as="span">. Further out = better.</Text>
                 </HStack>
-                <SkillsRadarChart skills={rawSkills} maxApplicability={maxApplicability} />
+                <SkillsRadarChart skills={rawSkills} minApplicability={minApplicability} maxApplicability={maxApplicability} bandsRanges={bands} />
               </Box>
             )}
 
@@ -291,9 +310,9 @@ export default function SkillsPage() {
             ) : (
               <VStack as="ul" align="stretch" spacing={2} listStyleType="none" pl={0} w="full">
                 {sortedSkills.map((skill) => {
-                  const matchDisplay = applicabilityScoreDisplay(skill.applicability, maxApplicability);
-                  const matchNum = matchDisplay === '—' ? matchDisplay : matchDisplay.replace('/5', '');
-                  const matchBand = matchScoreBandLabel(skill.applicability, maxApplicability);
+                  const matchDisplay = applicabilityScoreDisplay(skill.applicability);
+                  const matchNum = matchDisplay === '-' ? matchDisplay : matchDisplay.replace('/5', '');
+                  const matchBand = matchScoreBandLabel(skill.applicability, bands);
                   const trend = trendLabel(skill.ai_trend);
                   const labelOnChart = chartLabel(skill);
                   const matchLabel = matchBand ? `${matchNum} (${matchBand})` : matchNum;
@@ -395,8 +414,10 @@ export default function SkillsPage() {
                   {selectedSkill && (
                     <SkillDetailsContent
                       skill={selectedSkill}
+                      minApplicability={minApplicability}
                       maxApplicability={maxApplicability}
                       structuralDimensionMeta={report?.structuralDimensionMeta ?? []}
+                      bandsRanges={bands}
                     />
                   )}
                 </ModalBody>

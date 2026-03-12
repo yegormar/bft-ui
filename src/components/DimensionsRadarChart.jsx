@@ -104,22 +104,23 @@ function GridLabelTwoLines({ id, anchor, x, y, animated }) {
   const fill = useColorModeValue('#475569', '#94a3b8');
   const [line1, line2] = splitLabel(id);
   const textAnchor = anchor === 'start' ? 'start' : anchor === 'end' ? 'end' : 'middle';
+  const transformStr = typeof animated?.transform === 'string' ? animated.transform : `translate(${x}, ${y})`;
   return (
-    <g transform={animated?.transform ?? undefined} style={{ transformOrigin: `${x}px ${y}px` }}>
+    <g transform={transformStr} style={{ transformOrigin: `${x}px ${y}px` }}>
       <text
-        x={x}
-        y={y}
+        x={0}
+        y={0}
         textAnchor={textAnchor}
         fill={fill}
         fontSize={10}
         fontWeight={500}
         style={{ shapeRendering: 'geometricPrecision' }}
       >
-        <tspan x={x} dy={0}>
+        <tspan x={0} dy={0}>
           {line1}
         </tspan>
         {line2 ? (
-          <tspan x={x} dy={LINE_HEIGHT}>
+          <tspan x={0} dy={LINE_HEIGHT}>
             {line2}
           </tspan>
         ) : null}
