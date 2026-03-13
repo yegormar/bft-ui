@@ -1,28 +1,10 @@
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { useState } from 'react';
-import { Box, Button, Flex, HStack, IconButton, Link, Tooltip, useColorMode, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import { MoonIcon, SunIcon, HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { Languages } from 'lucide-react';
-
-const LOCALES = [
-  { value: 'en', label: 'English' },
-  { value: 'fr', label: 'Français' },
-];
+import { Box, Flex, HStack, IconButton, Link, Tooltip, useColorMode, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
+import { MoonIcon, SunIcon, HamburgerIcon } from '@chakra-ui/icons';
 
 function Header() {
   const location = useLocation();
   const { colorMode, toggleColorMode } = useColorMode();
-  const [locale, setLocale] = useState(() => {
-    const saved = localStorage.getItem('locale');
-    return saved || 'en';
-  });
-
-  const setLanguage = (newLocale) => {
-    setLocale(newLocale);
-    localStorage.setItem('locale', newLocale);
-  };
-
-  const currentLocaleLabel = LOCALES.find((l) => l.value === locale)?.label ?? locale.toUpperCase();
 
   const linkProps = (path) => ({
     as: RouterLink,
@@ -66,36 +48,6 @@ function Header() {
             size="lg"
             data-testid="color-mode-toggle"
           />
-          <Tooltip label="Select language" hasArrow>
-            <Box as="span" display="inline-block">
-              <Menu>
-                <MenuButton
-                  as={Button}
-                  leftIcon={<Box as="span" lineHeight={0}><Languages size={20} strokeWidth={2} /></Box>}
-                  rightIcon={<ChevronDownIcon />}
-                  variant="ghost"
-                  size="lg"
-                  fontWeight="normal"
-                  data-testid="language-dropdown"
-                  aria-label="Select language"
-                >
-                  {currentLocaleLabel}
-                </MenuButton>
-                <MenuList>
-                  {LOCALES.map((l) => (
-                    <MenuItem
-                      key={l.value}
-                      onClick={() => setLanguage(l.value)}
-                      fontWeight={locale === l.value ? 'bold' : 'normal'}
-                      data-testid={`language-option-${l.value}`}
-                    >
-                      {l.label}
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </Menu>
-            </Box>
-          </Tooltip>
           <Menu>
             <MenuButton
               as={IconButton}
