@@ -45,19 +45,19 @@ const devTeam = [
     name: 'Eric He',
     role: 'Backend Engineer',
     bio: 'Designs the API and assessment engine, specializing in Node.js, Express, and AI-powered interviews.',
-    image: '/Screenshot 2026-03-16 174208-modified.png',
+    image: '/eric.jpg',
   },
   {
     name: 'Yegor Markov',
     role: 'Frontend Developer',
     bio: 'Builds intuitive user experiences with React and Chakra UI, focusing on accessibility and usability.',
-    image: '/Screenshot 2026-03-16 154718-modified.png',
+    image: '/Yegor.jpg',
   },
   {
     name: 'Leo Cook',
     role: 'Project Lead & Architect',
     bio: 'Guides the project vision and architecture, with deep expertise in full-stack development and AI integration.',
-    image: '/Screenshot 2026-03-16 154559-modified.png',
+    image: '/Leo.jpg',
   },
 ];
 
